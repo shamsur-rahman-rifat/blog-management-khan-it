@@ -2,8 +2,6 @@
 
 import topicModel from '../model/Topic.js';
 import Article from '../model/Article.js';
-import sendEmail from '../utility/sendEmail.js';
-
 
 export const addTopic = async (req, res) => {
   try {
