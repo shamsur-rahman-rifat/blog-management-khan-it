@@ -1,0 +1,60 @@
+import Topic from '../model/Topic.js';
+import Article from '../model/Article.js';
+
+export const getDashboardData = async (req, res) => {
+  try {
+    // Step 1: Get topics with nested project + user names
+    const topics = await Topic.find()
+      .populate({
+        path: 'project',
+        select: 'name writer manager private',
+        populate: [
+          { path: 'writer', select: 'name' },
+          { path: 'manager', select: 'name' }
+        ]
+      })
+      .lean();
+
+    // Step 2: Get all relevant articles
+    const topicIds = topics.map(t => t._id);
+    const articles = await Article.find({ topic: { $in: topicIds } }).lean();
+
+    // Step 3: Create map of articles
+    const articleMap = {};
+    for (const article of articles) {
+      articleMap[article.topic.toString()] = article;
+    }
+
+    // Step 4: Combine topic + project + writer/manager + article data
+    const dashboardData = topics.map(topic => {
+      const article = articleMap[topic._id.toString()] || {};
+      const project = topic.project || {};
+      const manager = project.manager || {};
+      const writer = project.writer || {};
+
+      return {
+        project: project.name || 'N/A',
+        projectType: project.private ? 'Private' : 'Public',
+        managerName: manager.name || 'N/A',
+        writerName: writer.name || 'N/A',
+        topic: topic.title,
+        month: topic.month,
+        status: article.status,
+        writerAssignedAt: topic.createdAt
+          ? topic.createdAt.toISOString().split('T')[0]
+          : null,
+        writerSubmittedAt: article.writerSubmittedAt
+          ? new Date(article.writerSubmittedAt).toISOString().split('T')[0]
+          : null,
+        publishedAt: article.publishedAt
+          ? new Date(article.publishedAt).toISOString().split('T')[0]
+          : null,
+      };
+    });
+
+    res.json({ status: 'Success', data: dashboardData });
+  } catch (err) {
+    console.error('Dashboard fetch error:', err);
+    res.status(500).json({ status: 'Failed', message: err.message });
+  }
+};
