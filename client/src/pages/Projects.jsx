@@ -1,7 +1,6 @@
 import React, { useEffect, useState, useContext } from 'react';
 import api from '../api';
 import { AuthContext } from '../auth/AuthContext';
-import { Navigate } from 'react-router-dom';
 
 export default function Projects() {
   const { user } = useContext(AuthContext);
@@ -210,16 +209,16 @@ export default function Projects() {
                     className="form-control"
                     value={form.writer}
                     onChange={e => handleChange('writer', e.target.value)}
+                    disabled={!form.private}  // Disable the dropdown if the project is public
                   >
                     <option value="">-- Select Writer --</option>
                     {users
-                      .filter(u => u.roles?.includes('writer'))
+                      .filter(u => u.roles?.includes('writer') && (form.private ? u._id !== '68c24f01384b81a2c17349e3' : true))  // Exclude the default writer if private
                       .map(u => (
                         <option key={u._id} value={u._id}>
                           {u.name}
                         </option>
-                      ))
-                    }
+                      ))}
                   </select>
                 </div>
 
