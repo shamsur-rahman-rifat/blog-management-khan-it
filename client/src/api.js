@@ -2,7 +2,7 @@
 import axios from 'axios';
 
 const api = axios.create({
-  baseURL: 'https://blog-management-khan-it.onrender.com/api',
+  baseURL: 'https://khanit.xyz/api',
   timeout: 10000,
 });
 
