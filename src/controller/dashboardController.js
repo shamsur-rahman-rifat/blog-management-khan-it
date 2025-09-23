@@ -1,8 +1,18 @@
 import Topic from '../model/Topic.js';
 import Article from '../model/Article.js';
+import Project from '../model/Project.js';  // import your Project model
+import User from '../model/User.js'; // to find user by email
 
 export const getDashboardData = async (req, res) => {
   try {
+    const email = req.headers.email;  // email set by auth middleware
+
+    // Find user by email to get user ID
+    const user = await User.findOne({ email }).lean();
+    if (!user) {
+      return res.status(404).json({ status: 'Failed', message: 'User not found' });
+    }
+    
     // Step 1: Get topics with nested project + user names
     const topics = await Topic.find()
       .populate({
@@ -24,6 +34,12 @@ export const getDashboardData = async (req, res) => {
     for (const article of articles) {
       articleMap[article.topic.toString()] = article;
     }
+
+    // Step 4: Count projects assigned to this user if manager role
+    let projectsAssignedCount = 0;
+    if (user.roles.includes('manager')) {
+      projectsAssignedCount = await Project.countDocuments({ manager: user._id });
+    }    
 
     // Step 4: Combine topic + project + writer/manager + article data
     const dashboardData = topics.map(topic => {
@@ -50,9 +66,9 @@ export const getDashboardData = async (req, res) => {
           ? new Date(article.publishedAt).toISOString().split('T')[0]
           : null,
       };
-    });
+    });   
 
-    res.json({ status: 'Success', data: dashboardData });
+    res.json({ status: 'Success', data: dashboardData, projectsAssignedCount  });
   } catch (err) {
     console.error('Dashboard fetch error:', err);
     res.status(500).json({ status: 'Failed', message: err.message });

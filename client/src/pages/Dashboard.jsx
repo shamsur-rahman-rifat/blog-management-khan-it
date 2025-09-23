@@ -11,6 +11,7 @@ export default function Dashboard() {
   const isWriter = user?.roles?.includes('writer');
 
   const [data, setData] = useState([]);
+  const [projectsAssignedCount, setProjectsAssignedCount] = useState(0); // Manager only field
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
 
@@ -31,7 +32,7 @@ export default function Dashboard() {
     return `${formattedDate} (${diffDays + 1}d)`;
   }
 
-  // Admin stats function (existing)
+  // Admin stats function
   function getAdminStats(data) {
     const now = new Date();
     const thisMonth = now.getMonth();
@@ -92,39 +93,39 @@ export default function Dashboard() {
 
   // Writer stats function
   function getWriterStats(data, writerEmail) {
-    const writerData = data.filter(item => 
-      item.writerName === writerEmail || 
-      item.writerName === user?.name || 
+    const writerData = data.filter(item =>
+      item.writerName === writerEmail ||
+      item.writerName === user?.name ||
       item.writerEmail === writerEmail
     );
 
     return {
       totalAssigned: writerData.length,
       submitted: writerData.filter(item => item.writerSubmittedAt).length,
-      dueContent: writerData.filter(item => 
+      dueContent: writerData.filter(item =>
         item.writerAssignedAt && !item.writerSubmittedAt
       ).length,
-      forRevision: writerData.filter(item => 
-        item.writerSubmittedAt && item.status==='revision'
+      forRevision: writerData.filter(item =>
+        item.writerSubmittedAt && item.status === 'revision'
       ).length
     };
   }
 
   // Manager stats function
   function getManagerStats(data, managerEmail) {
-    const managerData = data.filter(item => 
-      item.managerName === managerEmail || 
-      item.managerName === user?.name || 
+    const managerData = data.filter(item =>
+      item.managerName === managerEmail ||
+      item.managerName === user?.name ||
       item.managerEmail === managerEmail
     );
 
     const projects = [...new Set(managerData.map(item => item.project))];
 
     return {
-      projectsAssigned: projects.length,
+      projectsAssigned: projectsAssignedCount || projects.length, // Use API field if available
       totalContentAssigned: managerData.length,
       contentReceived: managerData.filter(item => item.writerSubmittedAt).length,
-      dueContent: managerData.filter(item => 
+      dueContent: managerData.filter(item =>
         item.writerAssignedAt && !item.writerSubmittedAt
       ).length
     };
@@ -136,26 +137,26 @@ export default function Dashboard() {
       return data; // Admin sees all data
     } else if (isManager && !isWriter) {
       // Manager only - filter by manager
-      return data.filter(item => 
-        item.managerName === user?.email || 
-        item.managerName === user?.name || 
+      return data.filter(item =>
+        item.managerName === user?.email ||
+        item.managerName === user?.name ||
         item.managerEmail === user?.email
       );
     } else if (isWriter && !isManager) {
       // Writer only - filter by writer
-      return data.filter(item => 
-        item.writerName === user?.email || 
-        item.writerName === user?.name || 
+      return data.filter(item =>
+        item.writerName === user?.email ||
+        item.writerName === user?.name ||
         item.writerEmail === user?.email
       );
     } else if (isManager && isWriter) {
       // Both manager and writer - show both
-      return data.filter(item => 
-        item.managerName === user?.email || 
-        item.managerName === user?.name || 
+      return data.filter(item =>
+        item.managerName === user?.email ||
+        item.managerName === user?.name ||
         item.managerEmail === user?.email ||
-        item.writerName === user?.email || 
-        item.writerName === user?.name || 
+        item.writerName === user?.email ||
+        item.writerName === user?.name ||
         item.writerEmail === user?.email
       );
     }
@@ -222,6 +223,9 @@ export default function Dashboard() {
       try {
         const res = await api.get('/getDashboardData');
         setData(res.data?.data || []);
+        if (isManager && res.data?.projectsAssignedCount) {
+          setProjectsAssignedCount(res.data.projectsAssignedCount);
+        }
       } catch (err) {
         console.error(err);
         setError('Failed to load dashboard data');
@@ -265,139 +269,139 @@ export default function Dashboard() {
   };
 
   // Generate dashboard title based on roles
-function getDashboardTitle() {
-  const roleCount = [isAdmin, isManager, isWriter].filter(Boolean).length;
+  function getDashboardTitle() {
+    const roleCount = [isAdmin, isManager, isWriter].filter(Boolean).length;
 
-  // Get current month (1-12) and map it to a month name
-  const now = new Date();
-  const monthNames = [
-    "January", "February", "March", "April", "May", "June", 
-    "July", "August", "September", "October", "November", "December"
-  ];
-  const currentMonth = monthNames[now.getMonth()]; // Get the current month name
-  
-  // Get the last two digits of the current year (e.g., 25 for 2025)
-  const currentYear = now.getFullYear().toString().slice(-2);
+    // Get current month (1-12) and map it to a month name
+    const now = new Date();
+    const monthNames = [
+      "January", "February", "March", "April", "May", "June",
+      "July", "August", "September", "October", "November", "December"
+    ];
+    const currentMonth = monthNames[now.getMonth()]; // Get the current month name
 
-  const formattedMonthYear = `${currentMonth.slice(0, 3)}-${currentYear}`; // Format as "Sep-25"
+    // Get the last two digits of the current year (e.g., 25 for 2025)
+    const currentYear = now.getFullYear().toString().slice(-2);
 
-  if (roleCount === 1) {
-    if (isAdmin) return `📊 Admin Timeline Dashboard - ${formattedMonthYear}`;
-    if (isManager) return `👨‍💼 Manager Timeline Dashboard - ${formattedMonthYear}`;
-    if (isWriter) return `📝 Writer Timeline Dashboard - ${formattedMonthYear}`;
+    const formattedMonthYear = `${currentMonth.slice(0, 3)}-${currentYear}`; // Format as "Sep-25"
+
+    if (roleCount === 1) {
+      if (isAdmin) return `📊 Admin Timeline Dashboard - ${formattedMonthYear}`;
+      if (isManager) return `👨‍💼 Manager Timeline Dashboard - ${formattedMonthYear}`;
+      if (isWriter) return `📝 Writer Timeline Dashboard - ${formattedMonthYear}`;
+    }
+
+    return `📊 Timeline Dashboard - ${formattedMonthYear}`;
   }
-  
-  return `📊 Timeline Dashboard - ${formattedMonthYear}`;
-}
 
-return (
-  <div className="container mt-4">
-    {/* Dashboard Header */}
-    <div className="d-flex flex-column flex-md-row justify-content-between align-items-center mb-4">
-      <h3 className="mb-2 mb-md-0 text-center text-md-start">{getDashboardTitle()}</h3>
-      <div className="text-center text-md-end">
-        <div className="mb-1">Welcome, <strong>{user?.email}</strong></div>
-        <div>
-          {user?.roles?.map((role, i) => (
-            <span key={i} className="badge bg-primary me-1">{role}</span>
-          ))}
+  return (
+    <div className="container mt-4">
+      {/* Dashboard Header */}
+      <div className="d-flex flex-column flex-md-row justify-content-between align-items-center mb-4">
+        <h3 className="mb-2 mb-md-0 text-center text-md-start">{getDashboardTitle()}</h3>
+        <div className="text-center text-md-end">
+          <div className="mb-1">Welcome, <strong>{user?.email}</strong></div>
+          <div>
+            {user?.roles?.map((role, i) => (
+              <span key={i} className="badge bg-primary me-1">{role}</span>
+            ))}
+          </div>
         </div>
       </div>
-    </div>
 
-    {/* KPI Sections */}
-    {statsConfig.map((section, sectionIdx) => (
-      <div key={sectionIdx} className="mb-5">
-        {/* Section Header */}
-        <div className="d-flex align-items-center mb-3">
-          <h5 className={`mb-0 me-3 ${section.titleColor}`}>{section.title}</h5>
-          <hr className="flex-grow-1 border-secondary" />
-        </div>
+      {/* KPI Sections */}
+      {statsConfig.map((section, sectionIdx) => (
+        <div key={sectionIdx} className="mb-5">
+          {/* Section Header */}
+          <div className="d-flex align-items-center mb-3">
+            <h5 className={`mb-0 me-3 ${section.titleColor}`}>{section.title}</h5>
+            <hr className="flex-grow-1 border-secondary" />
+          </div>
 
-        {/* KPI Cards Grid */}
-        <div className="row g-3">
-          {section.stats.map((item, idx) => (
-            <div
-              key={idx}
-              className={`col-12 col-sm-6 ${section.stats.length <= 4 ? 'col-md-6 col-lg-3' : 'col-md-4'}`}
-            >
-              <div className="card shadow-sm border-0 h-100 text-center">
-                <div className="card-body py-3">
-                  <h6 className="text-muted small mb-1">{item.label}</h6>
-                  <h4 className={`fw-bold text-${item.color} mb-0`}>{item.value}</h4>
+          {/* KPI Cards Grid */}
+          <div className="row g-3">
+            {section.stats.map((item, idx) => (
+              <div
+                key={idx}
+                className={`col-12 col-sm-6 ${section.stats.length <= 4 ? 'col-md-6 col-lg-3' : 'col-md-4'}`}
+              >
+                <div className="card shadow-sm border-0 h-100 text-center">
+                  <div className="card-body py-3">
+                    <h6 className="text-muted small mb-1">{item.label}</h6>
+                    <h4 className={`fw-bold text-${item.color} mb-0`}>{item.value}</h4>
+                  </div>
                 </div>
               </div>
-            </div>
-          ))}
+            ))}
+          </div>
         </div>
-      </div>
-    ))}
+      ))}
 
-    {/* Export Buttons */}
-    <div className="d-flex flex-wrap gap-2 mb-4 justify-content-center justify-content-md-end">
-      <CSVLink
-        data={filteredData}
-        headers={csvHeaders}
-        filename="dashboard.csv"
-        className="btn btn-outline-success d-flex align-items-center gap-1"
-      >
-        ⬇️ CSV
-      </CSVLink>
-      <button onClick={exportToExcel} className="btn btn-outline-primary d-flex align-items-center gap-1">
-        ⬇️ Excel
-      </button>
-    </div>
-
-    <hr className="mb-4" />
-
-    {/* Loader / Error / Table */}
-    {loading ? (
-      <div className="text-center my-5">
-        <div className="spinner-border text-primary" role="status"></div>
-        <p className="mt-3">Loading dashboard data...</p>
+      {/* Export Buttons */}
+      <div className="d-flex flex-wrap gap-2 mb-4 justify-content-center justify-content-md-end">
+        <CSVLink
+          data={filteredData}
+          headers={csvHeaders}
+          filename="dashboard.csv"
+          className="btn btn-outline-success d-flex align-items-center gap-1"
+        >
+          ⬇️ CSV
+        </CSVLink>
+        <button onClick={exportToExcel} className="btn btn-outline-primary d-flex align-items-center gap-1">
+          ⬇️ Excel
+        </button>
       </div>
-    ) : error ? (
-      <div className="alert alert-danger text-center my-5">
-        <strong>Error:</strong> {error}
-      </div>
-    ) : (
-      <div className="table-responsive shadow-sm rounded overflow-auto">
-        <table className="table table-striped table-hover align-middle">
-          <thead className="table-light text-center sticky-top">
-            <tr>
-              <th>Project</th>
-              <th>Topic</th>
-              <th>Month</th>
-              <th>Manager</th>
-              <th>Writer</th>
-              <th>Writer Assigned</th>
-              <th>Writing Complete</th>
-              <th>Content Published</th>
-            </tr>
-          </thead>
-          <tbody className="text-center">
-            {filteredData.length === 0 ? (
+
+      <hr className="mb-4" />
+
+      {/* Loader / Error / Table */}
+      {loading ? (
+        <div className="text-center my-5">
+          <div className="spinner-border text-primary" role="status"></div>
+          <p className="mt-3">Loading dashboard data...</p>
+        </div>
+      ) : error ? (
+        <div className="alert alert-danger text-center my-5">
+          <strong>Error:</strong> {error}
+        </div>
+      ) : (
+        <div className="table-responsive shadow-sm rounded overflow-auto">
+          <table className="table table-striped table-hover align-middle">
+            <thead className="table-light text-center sticky-top">
               <tr>
-                <td colSpan="8" className="text-center text-muted py-4">No data available</td>
+                <th>Project</th>
+                <th>Topic</th>
+                <th>Month</th>
+                <th>Manager</th>
+                <th>Writer</th>
+                <th>Writer Assigned</th>
+                <th>Writing Complete</th>
+                <th>Content Published</th>
               </tr>
-            ) : (
-              filteredData.map((item, index) => (
-                <tr key={index}>
-                  <td>{item.project}</td>
-                  <td className="text-start text-truncate" title={item.topic}>{item.topic}</td>
-                  <td>{item.month}</td>
-                  <td>{item.managerName}</td>
-                  <td>{item.writerName}</td>
-                  <td>{formatDateWithDiff(item.writerAssignedAt)}</td>
-                  <td>{formatDateWithDiff(item.writerSubmittedAt, item.writerAssignedAt)}</td>
-                  <td>{formatDateWithDiff(item.publishedAt, item.writerSubmittedAt)}</td>
+            </thead>
+            <tbody className="text-center">
+              {filteredData.length === 0 ? (
+                <tr>
+                  <td colSpan="8" className="text-center text-muted py-4">No data available</td>
                 </tr>
-              ))
-            )}
-          </tbody>
-        </table>
-      </div>
-    )}
-  </div>
-);
+              ) : (
+                filteredData.map((item, index) => (
+                  <tr key={index}>
+                    <td>{item.project}</td>
+                    <td>{item.topic}</td>
+                    <td>{item.month}</td>
+                    <td>{item.managerName}</td>
+                    <td>{item.writerName}</td>
+                    <td>{formatReadableDate(item.writerAssignedAt)}</td>
+                    <td>{formatDateWithDiff(item.writerSubmittedAt, item.writerAssignedAt)}</td>
+                    <td>{formatDateWithDiff(item.publishedAt, item.writerSubmittedAt)}</td>
+                  </tr>
+                ))
+              )}
+            </tbody>
+          </table>
+        </div>
+      )}
+    </div>
+  );
 }
