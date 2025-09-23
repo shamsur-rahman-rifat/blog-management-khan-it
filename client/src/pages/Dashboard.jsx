@@ -290,124 +290,114 @@ function getDashboardTitle() {
   return `📊 Timeline Dashboard - ${formattedMonthYear}`;
 }
 
-  // No access
-  if (!isAdmin && !isManager && !isWriter) {
-    return (
-      <div className="container mt-4">
-        <h3 className="mb-4 text-center">📊 Dashboard</h3>
-        <div className="text-center">
-          <p>Welcome <strong>{user?.email}</strong></p>
-          <div>
-            <strong>Your roles: </strong>
-            {user?.roles?.map((role, i) => (
-              <span key={i} className="badge bg-secondary ms-1">{role}</span>
-            ))}
-          </div>
-        </div>
-        <hr />
-        <p className="text-center text-muted">Use the menu to navigate.</p>
-      </div>
-    );
-  }
-
-  return (
-    <div className="container mt-4">
-      {/* Header */}
-      <div className="d-flex flex-column flex-md-row justify-content-between align-items-center mb-3">
-        <h3 className="mb-2 mb-md-0 text-center text-md-start">{getDashboardTitle()}</h3>
-        <div className="text-center text-md-end">
-          <div className="mb-2">Welcome, <strong>{user?.email}</strong></div>
-          <div>
-            {user?.roles?.map((role, i) => (
-              <span key={i} className="badge bg-primary me-1">{role}</span>
-            ))}
-          </div>
+return (
+  <div className="container mt-4">
+    {/* Dashboard Header */}
+    <div className="d-flex flex-column flex-md-row justify-content-between align-items-center mb-4">
+      <h3 className="mb-2 mb-md-0 text-center text-md-start">{getDashboardTitle()}</h3>
+      <div className="text-center text-md-end">
+        <div className="mb-1">Welcome, <strong>{user?.email}</strong></div>
+        <div>
+          {user?.roles?.map((role, i) => (
+            <span key={i} className="badge bg-primary me-1">{role}</span>
+          ))}
         </div>
       </div>
+    </div>
 
-      {/* Multiple Role-specific KPI Sections */}
-      {statsConfig.map((section, sectionIdx) => (
-        <div key={sectionIdx} className="mb-4">
-          <div className="d-flex align-items-center mb-3">
-            <h5 className={`${section.titleColor} mb-0 me-3`}>{section.title}</h5>
-            <hr className="flex-grow-1" />
-          </div>
-          
-          <div className="row text-center mb-3">
-            {section.stats.map((item, idx) => (
-              <div key={idx} className={`col-6 ${section.stats.length <= 4 ? 'col-md-6 col-lg-3' : 'col-md-4'} mb-3`}>
-                <div className="card shadow-sm border-0 h-100">
-                  <div className="card-body">
-                    <h6 className="text-muted small">{item.label}</h6>
-                    <h4 className={`fw-bold text-${item.color} mb-0`}>{item.value}</h4>
-                  </div>
+    {/* KPI Sections */}
+    {statsConfig.map((section, sectionIdx) => (
+      <div key={sectionIdx} className="mb-5">
+        {/* Section Header */}
+        <div className="d-flex align-items-center mb-3">
+          <h5 className={`mb-0 me-3 ${section.titleColor}`}>{section.title}</h5>
+          <hr className="flex-grow-1 border-secondary" />
+        </div>
+
+        {/* KPI Cards Grid */}
+        <div className="row g-3">
+          {section.stats.map((item, idx) => (
+            <div
+              key={idx}
+              className={`col-12 col-sm-6 ${section.stats.length <= 4 ? 'col-md-6 col-lg-3' : 'col-md-4'}`}
+            >
+              <div className="card shadow-sm border-0 h-100 text-center">
+                <div className="card-body py-3">
+                  <h6 className="text-muted small mb-1">{item.label}</h6>
+                  <h4 className={`fw-bold text-${item.color} mb-0`}>{item.value}</h4>
                 </div>
               </div>
-            ))}
-          </div>
+            </div>
+          ))}
         </div>
-      ))}
-
-      {/* Export buttons */}
-      <div className="d-flex flex-wrap gap-2 mb-3 justify-content-center justify-content-md-end">
-        <CSVLink data={filteredData} headers={csvHeaders} filename="dashboard.csv" className="btn btn-outline-success">
-          ⬇️ Export CSV
-        </CSVLink>
-        <button onClick={exportToExcel} className="btn btn-outline-primary">
-          ⬇️ Export Excel
-        </button>
       </div>
+    ))}
 
-      <hr />
-
-      {/* Loader / Error / Table */}
-      {loading ? (
-        <div className="text-center my-5">
-          <div className="spinner-border text-primary" role="status"></div>
-          <p className="mt-3">Loading dashboard data...</p>
-        </div>
-      ) : error ? (
-        <div className="alert alert-danger text-center my-5">
-          <strong>Error:</strong> {error}
-        </div>
-      ) : (
-        <div className="table-responsive shadow-sm rounded">
-          <table className="table table-striped table-hover align-middle">
-            <thead className="table-light text-center">
-              <tr>
-                <th>Project</th>
-                <th>Topic</th>
-                <th>Month</th>
-                <th>Manager</th>
-                <th>Writer</th>
-                <th>Writer Assigned</th>
-                <th>Writing Complete</th>
-                <th>Content Published</th>
-              </tr>
-            </thead>
-            <tbody className="text-center">
-              {filteredData.length === 0 ? (
-                <tr>
-                  <td colSpan="7" className="text-center text-muted py-4">No data available</td>
-                </tr>
-              ) : (
-                filteredData.map((item, index) => (
-                  <tr key={index}>
-                    <td>{item.project}</td>
-                    <td className="text-start">{item.topic}</td>
-                    <td>{item.month}</td>
-                    <td>{item.managerName}</td>
-                    <td>{item.writerName}</td>
-                    <td>{formatDateWithDiff(item.writerAssignedAt)}</td>
-                    <td>{formatDateWithDiff(item.writerSubmittedAt, item.writerAssignedAt)}</td>
-                    <td>{formatDateWithDiff(item.publishedAt, item.writerSubmittedAt)}</td>
-                  </tr>
-                ))
-              )}
-            </tbody>
-          </table>
-        </div>
-      )}
+    {/* Export Buttons */}
+    <div className="d-flex flex-wrap gap-2 mb-4 justify-content-center justify-content-md-end">
+      <CSVLink
+        data={filteredData}
+        headers={csvHeaders}
+        filename="dashboard.csv"
+        className="btn btn-outline-success d-flex align-items-center gap-1"
+      >
+        ⬇️ CSV
+      </CSVLink>
+      <button onClick={exportToExcel} className="btn btn-outline-primary d-flex align-items-center gap-1">
+        ⬇️ Excel
+      </button>
     </div>
-  );
+
+    <hr className="mb-4" />
+
+    {/* Loader / Error / Table */}
+    {loading ? (
+      <div className="text-center my-5">
+        <div className="spinner-border text-primary" role="status"></div>
+        <p className="mt-3">Loading dashboard data...</p>
+      </div>
+    ) : error ? (
+      <div className="alert alert-danger text-center my-5">
+        <strong>Error:</strong> {error}
+      </div>
+    ) : (
+      <div className="table-responsive shadow-sm rounded overflow-auto">
+        <table className="table table-striped table-hover align-middle">
+          <thead className="table-light text-center sticky-top">
+            <tr>
+              <th>Project</th>
+              <th>Topic</th>
+              <th>Month</th>
+              <th>Manager</th>
+              <th>Writer</th>
+              <th>Writer Assigned</th>
+              <th>Writing Complete</th>
+              <th>Content Published</th>
+            </tr>
+          </thead>
+          <tbody className="text-center">
+            {filteredData.length === 0 ? (
+              <tr>
+                <td colSpan="8" className="text-center text-muted py-4">No data available</td>
+              </tr>
+            ) : (
+              filteredData.map((item, index) => (
+                <tr key={index}>
+                  <td>{item.project}</td>
+                  <td className="text-start text-truncate" title={item.topic}>{item.topic}</td>
+                  <td>{item.month}</td>
+                  <td>{item.managerName}</td>
+                  <td>{item.writerName}</td>
+                  <td>{formatDateWithDiff(item.writerAssignedAt)}</td>
+                  <td>{formatDateWithDiff(item.writerSubmittedAt, item.writerAssignedAt)}</td>
+                  <td>{formatDateWithDiff(item.publishedAt, item.writerSubmittedAt)}</td>
+                </tr>
+              ))
+            )}
+          </tbody>
+        </table>
+      </div>
+    )}
+  </div>
+);
 }
