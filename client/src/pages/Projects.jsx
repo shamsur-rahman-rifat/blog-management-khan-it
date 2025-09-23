@@ -286,9 +286,9 @@ export default function Projects() {
               {hasRole('admin') && <p>Start by adding a new project above.</p>}
             </div>
           ) : (
-            <div className="table-responsive">
+            <div className="table-responsive shadow-sm rounded overflow-auto">
               <table className="table table-bordered table-striped table-hover align-middle text-center">
-                <thead className="table-light">
+                <thead className="table-light text-center sticky-top">
                   <tr>
                     <th>Project Name</th>
                     <th>Monthly Content</th>

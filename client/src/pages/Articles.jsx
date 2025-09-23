@@ -369,9 +369,9 @@ if ((isManager || isAdmin) && editData.publishLink) {
             {filteredArticles.length === 0 ? (
               <p className="text-center text-muted py-5">No articles to display.</p>
             ) : (
-              <div className="table-responsive">
-                <table className="table table-bordered table-hover">
-                  <thead className="table-light">
+              <div className="table-responsive shadow-sm rounded overflow-auto">
+                <table className="table table-striped table-bordered table-hover align-middle">
+                  <thead className="table-light text-center sticky-top">
                     <tr>
                       <th>Title</th>
                       <th>Project</th>

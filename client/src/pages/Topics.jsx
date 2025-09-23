@@ -365,9 +365,9 @@ export default function ManagerTopics() {
           ) : filteredTopics.length === 0 ? (
             <p className="text-center text-muted py-5">No topics found.</p>
           ) : (
-            <div className="table-responsive">
-              <table className="table table-bordered table-hover">
-                <thead className="table-light">
+            <div className="table-responsive shadow-sm rounded overflow-auto">
+              <table className="table table-striped table-bordered table-hover align-middle">
+                <thead className="table-light text-center sticky-top">
                   <tr>
                     <th>Project</th>
                     <th>Month</th>
