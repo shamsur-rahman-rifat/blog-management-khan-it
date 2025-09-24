@@ -6,7 +6,7 @@ export default function Projects() {
   const { user } = useContext(AuthContext);
 
   const [projects, setProjects] = useState([]);
-  const [users, setUsers] = useState([]);  // for selecting writers & managers
+  const [users, setUsers] = useState([]);
 
   const [form, setForm] = useState({
     name: '',
@@ -17,14 +17,11 @@ export default function Projects() {
   });
   const [editingId, setEditingId] = useState(null);
   const [loading, setLoading] = useState(false);
-  const [submitting, setSubmitting] = useState(false); // disable submit while request
+  const [submitting, setSubmitting] = useState(false);
 
-  // Helper to check roles
   const hasRole = (role) => user?.roles?.includes(role);
 
-  // Access control: deny writers completely
   if (!user) {
-    // User info not loaded yet
     return (
       <div className="container py-5 text-center">
         <div className="spinner-border text-primary" role="status"></div>
@@ -33,14 +30,12 @@ export default function Projects() {
     );
   }
 
-  // Fetch projects
   const fetchProjects = async () => {
     setLoading(true);
     try {
       const res = await api.get('/viewProjectList');
       let allProjects = res.data?.data || [];
 
-      // If user is manager but not admin, filter projects to only those managed by user
       if (hasRole('manager') && !hasRole('admin')) {
         allProjects = allProjects.filter(p => {
           const managerId = p.manager?._id || p.manager;
@@ -57,7 +52,6 @@ export default function Projects() {
     }
   };
 
-  // Fetch users for select dropdowns
   const fetchUsers = async () => {
     try {
       const res = await api.get('/viewUserList');
@@ -70,15 +64,14 @@ export default function Projects() {
   useEffect(() => {
     fetchProjects();
     fetchUsers();
-  }, [user]); // refetch projects when user changes (roles may affect filtering)
+  }, [user]);
 
   const handleChange = (field, value) => {
-    // If field is 'private', we want to auto-set writer
     if (field === 'private') {
       setForm(prev => ({
         ...prev,
         private: value,
-        writer: value ? '' : '68c24f01384b81a2c17349e3', // if public (false), set default writer
+        writer: value ? '' : '68c24f01384b81a2c17349e3',
       }));
     } else {
       setForm(prev => ({
@@ -108,13 +101,7 @@ export default function Projects() {
         await api.post('/addProject', payload);
         alert('Project added!');
       }
-      setForm({
-        name: '',
-        word: 0,
-        private: true,
-        writer: '',
-        manager: '',
-      });
+      setForm({ name: '', word: 0, private: true, writer: '', manager: '' });
       setEditingId(null);
       fetchProjects();
     } catch (err) {
@@ -148,11 +135,28 @@ export default function Projects() {
     }
   };
 
+  const handleToggleStatus = async (project) => {
+    const currentStatus = project.status;
+    const newStatus = currentStatus === 'paused' ? 'ongoing' : 'paused';
+
+    if (!window.confirm(`Change project status to "${newStatus}"?`)) return;
+
+    try {
+      await api.put(`/updateProject/${project._id || project.id}`, {
+        status: newStatus,
+      });
+      alert(`Project status updated to "${newStatus}"`);
+      fetchProjects();
+    } catch (err) {
+      console.error(err);
+      alert('Failed to update status');
+    }
+  };
+
   return (
     <div className="container py-4">
       <h3 className="mb-4 text-center">🗂️ Project Dashboard</h3>
 
-      {/* Only show form for admin */}
       {hasRole('admin') && (
         <div className="card shadow-sm mb-4">
           <div className="card-body">
@@ -161,7 +165,6 @@ export default function Projects() {
             </h5>
             <form onSubmit={handleSubmit}>
               <div className="row g-3">
-                {/* Name */}
                 <div className="col-md-6 col-lg-4">
                   <label htmlFor="projectName" className="form-label">Project Name</label>
                   <input
@@ -175,7 +178,6 @@ export default function Projects() {
                   />
                 </div>
 
-                {/* Words per Month */}
                 <div className="col-md-6 col-lg-4">
                   <label htmlFor="words" className="form-label">Content (Per Month)</label>
                   <input
@@ -189,7 +191,6 @@ export default function Projects() {
                   />
                 </div>
 
-                {/* Project Type: public / private */}
                 <div className="col-md-6 col-lg-4">
                   <label className="form-label">Project Type</label>
                   <select
@@ -202,18 +203,17 @@ export default function Projects() {
                   </select>
                 </div>
 
-                {/* Writer (single) */}
                 <div className="col-md-6 col-lg-4">
                   <label className="form-label">Writer</label>
                   <select
                     className="form-control"
                     value={form.writer}
                     onChange={e => handleChange('writer', e.target.value)}
-                    disabled={!form.private}  // Disable the dropdown if the project is public
+                    disabled={!form.private}
                   >
                     <option value="">-- Select Writer --</option>
                     {users
-                      .filter(u => u.roles?.includes('writer') && (form.private ? u._id !== '68c24f01384b81a2c17349e3' : true))  // Exclude the default writer if private
+                      .filter(u => u.roles?.includes('writer') && (form.private ? u._id !== '68c24f01384b81a2c17349e3' : true))
                       .map(u => (
                         <option key={u._id} value={u._id}>
                           {u.name}
@@ -222,7 +222,6 @@ export default function Projects() {
                   </select>
                 </div>
 
-                {/* Manager (single) */}
                 <div className="col-md-6 col-lg-4">
                   <label className="form-label">Manager</label>
                   <select
@@ -237,12 +236,10 @@ export default function Projects() {
                         <option key={u._id} value={u._id}>
                           {u.name}
                         </option>
-                      ))
-                    }
+                      ))}
                   </select>
                 </div>
 
-                {/* Buttons */}
                 <div className="col-12 col-md-6 col-lg-4 d-flex align-items-end gap-2">
                   <button 
                     className="btn btn-primary w-100" 
@@ -264,14 +261,12 @@ export default function Projects() {
                     </button>
                   )}
                 </div>
-
               </div>
             </form>
           </div>
         </div>
       )}
 
-      {/* Projects Table */}
       <div className="card shadow-sm">
         <div className="card-body">
           <h5 className="card-title mb-4">🗂️ Projects List</h5>
@@ -295,46 +290,55 @@ export default function Projects() {
                     <th>Type</th>
                     <th>Writer</th>
                     <th>Manager</th>
-                    {hasRole('admin') && <th style={{ minWidth: '140px' }}>Actions</th>}
+                    <th>Status</th>
+                    {hasRole('admin') && <th style={{ minWidth: '180px' }}>Actions</th>}
                   </tr>
                 </thead>
                 <tbody>
                   {projects.map(p => {
                     const id = p._id || p.id;
-                    // Resolve writer name
-                    const writerUser = users.find(u => {
-                      return u._id === (p.writer?._id || p.writer);
-                    });
-                    const managerUser = users.find(u => {
-                      return u._id === (p.manager?._id || p.manager);
-                    });
+                    const writerUser = users.find(u => u._id === (p.writer?._id || p.writer));
+                    const managerUser = users.find(u => u._id === (p.manager?._id || p.manager));
+
                     return (
                       <tr key={id}>
                         <td className="text-start">{p.name}</td>
                         <td>{p.word || 0}</td>
                         <td>{p.private ? 'Private' : 'Public'}</td>
-                        <td>{writerUser ? writerUser.name : (p.writer?._id || p.writer || '—')}</td>
-                        <td>{managerUser ? managerUser.name : (p.manager?._id || p.manager || '—')}</td>
-        {hasRole('admin') ? (
-          <td>
-            <div className="d-flex justify-content-center gap-2">
-              <button
-                className="btn btn-sm btn-outline-primary"
-                title="Edit"
-                onClick={() => handleEdit(p)}
-              >
-                ✏️ Edit
-              </button>
-              <button
-                className="btn btn-sm btn-outline-danger"
-                title="Delete"
-                onClick={() => handleDelete(id)}
-              >
-                🗑️ Delete
-              </button>
-            </div>
-          </td>
-        ) : null}
+                        <td>{writerUser ? writerUser.name : (p.writer || '—')}</td>
+                        <td>{managerUser ? managerUser.name : (p.manager || '—')}</td>
+                        <td>
+                          <span className={`badge ${p.status === 'paused' ? 'bg-warning text-dark' : 'bg-success'}`}>
+                            {p.status || '—'}
+                          </span>
+                        </td>
+                        {hasRole('admin') && (
+                          <td>
+                            <div className="d-flex justify-content-center gap-2 flex-wrap">
+                              <button
+                                className="btn btn-sm btn-outline-primary"
+                                title="Edit"
+                                onClick={() => handleEdit(p)}
+                              >
+                                ✏️ Edit
+                              </button>
+                              <button
+                                className="btn btn-sm btn-outline-danger"
+                                title="Delete"
+                                onClick={() => handleDelete(id)}
+                              >
+                                🗑️ Delete
+                              </button>
+                              <button
+                                className="btn btn-sm btn-outline-warning"
+                                title="Toggle Status"
+                                onClick={() => handleToggleStatus(p)}
+                              >
+                                🔄 {p.status === 'paused' ? 'Ongoing' : 'Pause'}
+                              </button>
+                            </div>
+                          </td>
+                        )}
                       </tr>
                     );
                   })}
