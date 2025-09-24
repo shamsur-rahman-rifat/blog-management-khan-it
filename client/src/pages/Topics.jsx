@@ -231,11 +231,13 @@ export default function ManagerTopics() {
                 disabled={loading || saving}
               >
                 <option value="">-- Select Project --</option>
-                {projects.map(project => (
-                  <option key={project._id} value={project._id}>
-                    {project.name} ({project.word || 0} blogs)
-                  </option>
-                ))}
+                  {projects
+                    .filter(project => project.status !== 'paused')
+                    .map(project => (
+                      <option key={project._id} value={project._id}>
+                        {project.name} ({project.word || 0} blogs)
+                      </option>
+                    ))}
               </select>
             </div>
 
