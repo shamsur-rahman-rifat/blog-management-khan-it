@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useContext } from 'react';
+import React, { useState, useEffect, useContext, useRef } from 'react';
 import api from '../api';
 import { AuthContext } from '../auth/AuthContext';
 import { CSVLink } from 'react-csv';
@@ -16,6 +16,9 @@ export default function ManagerTopics() {
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
   const [selectedMonth, setSelectedMonth] = useState('');
+  const formRef = useRef(null);
+  const titleInputRef = useRef(null);
+
 
   const isManager = user?.roles?.includes('manager');
   const isWriter = user?.roles?.includes('writer');
@@ -158,7 +161,19 @@ export default function ManagerTopics() {
       instructions: topic.instructions || '',
       month: topic.month || ''
     }]);
+    // Smooth scroll to form and focus title input
+    setTimeout(() => {
+      formRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      titleInputRef.current?.focus();
+    }, 100);    
   };
+
+const handleCancelEdit = () => {
+  setEditingTopicId(null);
+  setSelectedProjectId('');
+  setBlogInputs([]);
+};
+
 
   const handleDelete = async (topicId) => {
     if (!window.confirm('Are you sure you want to delete this topic?')) return;
@@ -213,55 +228,60 @@ export default function ManagerTopics() {
     ? topics.filter(topic => topic.month === selectedMonth)
     : topics;
 
-  return (
-    <div className="container py-4">
-      <h3 className="mb-4 text-center">🛠️ Manage Your Blogs</h3>
+return (
+  <div className="container py-4">
+    <h3 className="mb-4 text-center">🛠️ Manage Your Blogs</h3>
 
-      {isManager && (
-        <div className="card shadow-sm mb-4">
-          <div className="card-body">
-            <h5 className="card-title">Create/Edit Blog Topics</h5>
+    {/* 📌 Manager Only Form Section */}
+    {isManager && (
+      <div className="card shadow-sm mb-4" ref={formRef}>
+        <div className="card-body">
+          <h5 className="card-title mb-3">📌 Assign Blog Topics</h5>
 
-            <div className="mb-3">
-              <label className="form-label">Select Project</label>
-              <select
-                className="form-select"
-                value={selectedProjectId}
-                onChange={(e) => handleProjectChange(e.target.value)}
-                disabled={loading || saving}
-              >
-                <option value="">-- Select Project --</option>
-                  {projects
-                    .filter(project => project.status !== 'paused')
-                    .map(project => (
-                      <option key={project._id} value={project._id}>
-                        {project.name} ({project.word || 0} blogs)
-                      </option>
-                    ))}
-              </select>
-            </div>
+          {/* Project Dropdown */}
+          <div className="mb-4">
+            <label className="form-label fw-semibold">Select Project</label>
+            <select
+              className="form-select"
+              value={selectedProjectId}
+              onChange={(e) => handleProjectChange(e.target.value)}
+              disabled={loading || saving}
+            >
+              <option value="">-- Select Project --</option>
+              {projects
+                .filter(project => project.status !== 'paused')
+                .map(project => (
+                  <option key={project._id} value={project._id}>
+                    {project.name} ({project.word || 0} blogs)
+                  </option>
+                ))}
+            </select>
+          </div>
 
-            {blogInputs.length > 0 && (
-              <>
-                <h6 className="mb-3">
-                  {editingTopicId ? '✏️ Editing Blog' : `📝 Blog Details (${blogInputs.length} blogs)`}
-                </h6>
+          {/* Blog Inputs */}
+          {blogInputs.length > 0 && (
+            <>
+              <h6 className="mb-3 text-muted">
+                {editingTopicId ? '✏️ Editing Blog' : `📝 Assign ${blogInputs.length} Blog${blogInputs.length > 1 ? 's' : ''}`}
+              </h6>
 
-                {blogInputs.map((blog, index) => (
-                  <div key={index} className="border rounded p-3 mb-3 bg-light">
-                    <h6 className="mb-3">Blog #{index + 1}</h6>
+              {/* Each Blog Card */}
+              {blogInputs.map((blog, index) => (
+                <div key={index} className="border rounded p-3 mb-3 bg-light">
+                  <h6 className="mb-3 text-secondary">📝 Blog #{index + 1}</h6>
 
-                    <div className="mb-2">
+                  <div className="row g-3">
+                    <div className="col-12 col-md-6">
                       <input
                         className="form-control"
                         placeholder="Title *"
                         value={blog.title}
                         onChange={(e) => handleInputChange(index, 'title', e.target.value)}
                         required
+                        ref={index === 0 ? titleInputRef : null}
                       />
                     </div>
-
-                    <div className="mb-2">
+                    <div className="col-12 col-md-6">
                       <input
                         className="form-control"
                         placeholder="Keyword"
@@ -269,8 +289,7 @@ export default function ManagerTopics() {
                         onChange={(e) => handleInputChange(index, 'keyword', e.target.value)}
                       />
                     </div>
-
-                    <div className="mb-2">
+                    <div className="col-12">
                       <textarea
                         className="form-control"
                         placeholder="Instructions"
@@ -279,25 +298,27 @@ export default function ManagerTopics() {
                         onChange={(e) => handleInputChange(index, 'instructions', e.target.value)}
                       />
                     </div>
-
-                    <div className="mb-0">
+                    <div className="col-12 col-md-6">
                       <select
                         className="form-select"
                         value={blog.month}
                         onChange={(e) => handleInputChange(index, 'month', e.target.value)}
                         required
                       >
-                        <option value="">-- Select Month *--</option>
+                        <option value="">-- Select Month * --</option>
                         {getMonths().map(month => (
                           <option key={month} value={month}>{month}</option>
                         ))}
                       </select>
                     </div>
                   </div>
-                ))}
+                </div>
+              ))}
 
+              {/* Buttons */}
+              <div className="d-flex flex-column flex-sm-row gap-2 mt-3">
                 <button
-                  className={`btn w-100 ${editingTopicId ? 'btn-primary' : 'btn-success'}`}
+                  className={`btn flex-fill ${editingTopicId ? 'btn-primary' : 'btn-success'}`}
                   onClick={handleSave}
                   disabled={saving}
                 >
@@ -312,128 +333,137 @@ export default function ManagerTopics() {
                     `✅ Assign ${blogInputs.length} Blog${blogInputs.length > 1 ? 's' : ''}`
                   )}
                 </button>
+
+                {blogInputs.length > 0 && (
+                  <button
+                    className="btn btn-outline-secondary flex-fill"
+                    onClick={handleCancelEdit}
+                    disabled={saving}
+                  >
+                    ❌ Cancel
+                  </button>
+                )}
+              </div>
+            </>
+          )}
+        </div>
+      </div>
+    )}
+
+    {/* 📋 Topics Table */}
+    <div className="card shadow-sm">
+      <div className="card-body">
+        {/* Header and Filter */}
+        <div className="d-flex flex-column flex-md-row justify-content-between align-items-start align-items-md-center mb-3 gap-3">
+          <h5 className="card-title mb-0">📋 Your Blog Topics</h5>
+
+          <div className="d-flex flex-wrap gap-2">
+            <select
+              className="form-select form-select-sm"
+              value={selectedMonth}
+              onChange={(e) => setSelectedMonth(e.target.value)}
+            >
+              <option value="">All Months</option>
+              {getUniqueMonthsFromTopics().map(month => (
+                <option key={month} value={month}>{month}</option>
+              ))}
+            </select>
+
+            {topics.length > 0 && (
+              <>
+                <CSVLink
+                  data={getExportData()}
+                  headers={csvHeaders}
+                  filename="blog_topics.csv"
+                  className="btn btn-outline-secondary btn-sm"
+                >
+                  📤 Export CSV
+                </CSVLink>
+                <button
+                  className="btn btn-outline-success btn-sm"
+                  onClick={handleExportExcel}
+                >
+                  📊 Export Excel
+                </button>
               </>
             )}
           </div>
         </div>
-      )}
 
-      {/* Topics Table */}
-      <div className="card shadow-sm">
-        <div className="card-body">
-          <div className="d-flex flex-column flex-md-row justify-content-between align-items-start align-items-md-center mb-3 gap-2">
-            <h5 className="card-title mb-0">📋 Your Blog Topics</h5>
-
-            <div className="d-flex gap-2 flex-wrap">
-              {/* Month Filter */}
-              <select
-                className="form-select form-select-sm"
-                value={selectedMonth}
-                onChange={(e) => setSelectedMonth(e.target.value)}
-              >
-                <option value="">All Months</option>
-                {getUniqueMonthsFromTopics().map(month => (
-                  <option key={month} value={month}>{month}</option>
-                ))}
-              </select>
-
-              {topics.length > 0 && (
-                <>
-                  <CSVLink
-                    data={getExportData()}
-                    headers={csvHeaders}
-                    filename="blog_topics.csv"
-                    className="btn btn-outline-secondary btn-sm"
-                  >
-                    📤 Export CSV
-                  </CSVLink>
-                  <button
-                    className="btn btn-outline-success btn-sm"
-                    onClick={handleExportExcel}
-                  >
-                    📊 Export Excel
-                  </button>
-                </>
-              )}
+        {/* Loading or Empty State */}
+        {loading ? (
+          <div className="text-center py-5">
+            <div className="spinner-border text-primary" style={{ width: '3rem', height: '3rem' }}>
+              <span className="visually-hidden">Loading...</span>
             </div>
           </div>
+        ) : filteredTopics.length === 0 ? (
+          <p className="text-center text-muted py-5">No topics found.</p>
+        ) : (
+          <div className="table-responsive">
+            <table className="table table-striped table-bordered table-hover align-middle text-center">
+              <thead className="table-light sticky-top">
+                <tr>
+                  <th>Project</th>
+                  <th>Month</th>
+                  <th>Title</th>
+                  <th>Keyword</th>
+                  <th>Instructions</th>
+                  <th>Writer</th>
+                  <th>Updated</th>
+                  {isManager && <th>Actions</th>}
+                </tr>
+              </thead>
+              <tbody>
+                {filteredTopics.map(topic => {
+                  const writerName = users.find(u => u._id === topic.project?.writer)?.name || '—';
+                  const canEdit = isManager && topic.createdBy === user.email;
+                  const updatedDate = topic.updatedAt
+                    ? new Date(topic.updatedAt).toLocaleDateString('en-GB', {
+                        day: '2-digit',
+                        month: 'short',
+                        year: 'numeric'
+                      })
+                    : '—';
 
-          {loading ? (
-            <div className="text-center py-5">
-              <div className="spinner-border text-primary" style={{ width: '3rem', height: '3rem' }}>
-                <span className="visually-hidden">Loading...</span>
-              </div>
-            </div>
-          ) : filteredTopics.length === 0 ? (
-            <p className="text-center text-muted py-5">No topics found.</p>
-          ) : (
-            <div className="table-responsive shadow-sm rounded overflow-auto">
-              <table className="table table-striped table-bordered table-hover align-middle">
-                <thead className="table-light text-center sticky-top">
-                  <tr>
-                    <th>Project</th>
-                    <th>Month</th>
-                    <th>Title</th>
-                    <th>Keyword</th>
-                    <th>Instructions</th>
-                    <th>Writer</th>
-                    <th>Update Date</th> 
-                    {isManager && <th>Actions</th>}
-                  </tr>
-                </thead>
-                  <tbody>
-                    {filteredTopics.map(topic => {
-                      const writerName = users.find(u => u._id === topic.project?.writer)?.name || '—';
-                      const canEdit = isManager && topic.createdBy === user.email;
-
-                      const updatedDate = topic.updatedAt
-                        ? new Date(topic.updatedAt).toLocaleDateString('en-GB', {
-                            day: '2-digit',
-                            month: 'short',
-                            year: 'numeric'
-                          })
-                        : '—';
-
-                      return (
-                        <tr key={topic._id}>
-                          <td>{topic.project?.name || 'N/A'}</td>
-                          <td>{topic.month}</td>
-                          <td>{topic.title}</td>
-                          <td>{topic.keyword || '—'}</td>
-                          <td>{topic.instructions || '—'}</td>
-                          <td>{writerName}</td>
-                          <td>{updatedDate}</td> {/* New Column */}
-                          {isManager && (
-                            <td>
-                              {canEdit ? (
-                                <div className="d-flex gap-1">
-                                  <button
-                                    className="btn btn-sm btn-outline-primary"
-                                    onClick={() => handleEdit(topic)}
-                                  >
-                                    ✏️ Edit
-                                  </button>
-                                  <button
-                                    className="btn btn-sm btn-outline-danger"
-                                    onClick={() => handleDelete(topic._id)}
-                                  >
-                                    🗑️ Delete
-                                  </button>
-                                </div>
-                              ) : (
-                                '—'
-                              )}
-                            </td>
-                          )}
-                        </tr>
-                      );
-                    })}
-                  </tbody>
-              </table>
-            </div>
-          )}
-        </div>
+                  return (
+                    <tr key={topic._id}>
+                      <td>{topic.project?.name || 'N/A'}</td>
+                      <td>{topic.month}</td>
+                      <td>{topic.title}</td>
+                      <td>{topic.keyword || '—'}</td>
+                      <td>{topic.instructions || '—'}</td>
+                      <td>{writerName}</td>
+                      <td>{updatedDate}</td>
+                      {isManager && (
+                        <td>
+                          {canEdit ? (
+                            <div className="d-flex flex-wrap justify-content-center gap-1">
+                              <button
+                                className="btn btn-sm btn-outline-primary"
+                                onClick={() => handleEdit(topic)}
+                              >
+                                ✏️ Edit
+                              </button>
+                              <button
+                                className="btn btn-sm btn-outline-danger"
+                                onClick={() => handleDelete(topic._id)}
+                              >
+                                🗑️ Delete
+                              </button>
+                            </div>
+                          ) : '—'}
+                        </td>
+                      )}
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+        )}
       </div>
     </div>
-  );
+  </div>
+);
 }

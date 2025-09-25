@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useContext } from 'react';
+import React, { useEffect, useState, useContext, useRef } from 'react';
 import api from '../api';
 import { AuthContext } from '../auth/AuthContext';
 
@@ -7,6 +7,8 @@ export default function Projects() {
 
   const [projects, setProjects] = useState([]);
   const [users, setUsers] = useState([]);
+  const formRef = useRef(null);
+
 
   const [form, setForm] = useState({
     name: '',
@@ -121,6 +123,11 @@ export default function Projects() {
       writer: p.writer?._id || p.writer || '',
       manager: p.manager?._id || p.manager || '',
     });
+
+      // Scroll to the form after short delay
+  setTimeout(() => {
+    formRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  }, 100);
   };
 
   const handleDelete = async (id) => {
@@ -158,7 +165,7 @@ export default function Projects() {
       <h3 className="mb-4 text-center">🗂️ Project Dashboard</h3>
 
       {hasRole('admin') && (
-        <div className="card shadow-sm mb-4">
+        <div className="card shadow-sm mb-4" ref={formRef}>
           <div className="card-body">
             <h5 className="card-title mb-4">
               {editingId ? '✏️ Edit Project' : '➕ Add New Project'}
