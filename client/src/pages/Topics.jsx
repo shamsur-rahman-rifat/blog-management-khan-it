@@ -25,7 +25,7 @@ export default function ManagerTopics() {
 
   const getMonths = () => {
     const months = [];
-    for (let i = 1; i <= 3; i++) {
+    for (let i = 0; i <= 3; i++) {
       const date = new Date();
       date.setMonth(date.getMonth() + i);
       const monthName = date.toLocaleString('default', { month: 'short' });
