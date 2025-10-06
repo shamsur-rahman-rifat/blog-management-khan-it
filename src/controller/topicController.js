@@ -9,10 +9,8 @@ const tokenizer = new natural.WordTokenizer();
 
 export const addTopic = async (req, res) => {
   try {
-    const reqBody = req.body;
+    const { title, project, month, force = false } = req.body;
     const createdBy = req.headers['email'];
-    reqBody.createdBy = createdBy;
-    reqBody.writerAssignedAt  = new Date();
 
     // Fetch existing topics for the same project
     const existingTopics = await topicModel.find({ project });
@@ -48,7 +46,11 @@ export const addTopic = async (req, res) => {
     }
 
     // Create the topic
-    const createdTopic = await topicModel.create(reqBody);
+    const createdTopic = await topicModel.create({
+      ...req.body,
+      createdBy,
+      writerAssignedAt: new Date(),
+    });
 
     // Automatically create an article linked to the topic
     const newArticle = new Article({
