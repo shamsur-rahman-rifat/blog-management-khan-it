@@ -149,7 +149,7 @@ export default function ManagerTopics() {
 
     // Check if the error message matches the 'Topic already exists' message
     if (error.response && error.response.status === 400 && error.response.data.message === 'Topic already exists for this project.') {
-      alert('Topic already exists for this project. Please choose another title or project.');
+      alert('Topic already exists for this project. Please choose another title.');
     } else {
       alert('Failed to save: ' + error.message);
     }
