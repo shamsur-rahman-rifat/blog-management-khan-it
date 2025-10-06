@@ -12,8 +12,9 @@ export default function Articles() {
   const [editingId, setEditingId] = useState(null);
   const [editData, setEditData] = useState({});
   const [revisionModal, setRevisionModal] = useState({ show: false, articleId: null, topicId: null, instructions: "" });
+  const [showFilters, setShowFilters] = useState(false);
 
-  // New states for filters/search
+  // Filter states
   const [searchTitle, setSearchTitle] = useState("");
   const [filters, setFilters] = useState({
     project: "",
@@ -90,7 +91,18 @@ export default function Articles() {
       case "published": return "success";
       case "submitted": return "info";
       case "revision": return "warning";
+      case "approved": return "primary";
       default: return "secondary";
+    }
+  };
+
+  const getStatusIcon = (status) => {
+    switch (status) {
+      case "published": return "✓";
+      case "submitted": return "📤";
+      case "revision": return "🔄";
+      case "approved": return "👍";
+      default: return "📝";
     }
   };
 
@@ -166,14 +178,12 @@ export default function Articles() {
       updates.writerSubmittedAt = new Date();
     }
 
-if ((isManager || isAdmin) && editData.publishLink) {
-  updates.publishLink = editData.publishLink;
-
-  // Ensure status is published if publishLink is added
-  if (!editData.status) {
-    updates.status = "published";
-  }
-}
+    if ((isManager || isAdmin) && editData.publishLink) {
+      updates.publishLink = editData.publishLink;
+      if (!editData.status) {
+        updates.status = "published";
+      }
+    }
 
     try {
       await api.put(`/updateArticle/${articleId}`, updates);
@@ -225,6 +235,21 @@ if ((isManager || isAdmin) && editData.publishLink) {
     return arr;
   };
 
+  const clearAllFilters = () => {
+    setSearchTitle("");
+    setFilters({
+      project: "",
+      month: "",
+      status: "",
+      writer: "",
+      manager: ""
+    });
+  };
+
+  const hasActiveFilters = () => {
+    return searchTitle || filters.project || filters.month || filters.status || filters.writer || filters.manager;
+  };
+
   const getExportData = () => {
     return getFilteredArticles().map(article => ({
       Title: article.topic?.title || "—",
@@ -252,7 +277,7 @@ if ((isManager || isAdmin) && editData.publishLink) {
   // Helpers to generate options lists from articles / users
   const projectOptions = Array.from(
     new Set(articles.map(a => a.topic?.project?.name).filter(n => n))
-  );
+  ).sort();
   const monthOptions = Array.from(
     new Set(articles.map(a => a.topic?.month).filter(m => m))
   );
@@ -263,234 +288,365 @@ if ((isManager || isAdmin) && editData.publishLink) {
   const managerOptions = users.filter(u => u.roles?.includes("manager"));
 
   return (
-    <div className="container py-4">
-      <h3 className="mb-4 text-center fw-bold">📝 Articles Dashboard</h3>
+    <div className="container-fluid py-4 px-3 px-lg-4" style={{ maxWidth: "1400px" }}>
+      {/* Header Section */}
+      <div className="row mb-4">
+        <div className="col">
+          <div className="d-flex flex-column flex-md-row justify-content-between align-items-start align-items-md-center gap-3">
+            <div>
+              <h2 className="mb-1 fw-bold text-primary">
+                📝 Articles Dashboard
+              </h2>
+              <p className="text-muted mb-0 small">
+                Manage and track all your articles in one place
+              </p>
+            </div>
+            <button 
+              className="btn btn-primary btn-sm"
+              onClick={() => loadData()}
+              disabled={loading}
+            >
+              🔄 Refresh
+            </button>
+          </div>
+        </div>
+      </div>
 
       {loading ? (
         <div className="text-center py-5">
-          <div className="spinner-border text-primary" style={{ width: "3rem", height: "3rem" }}>
+          <div className="spinner-border text-primary mb-3" style={{ width: "3rem", height: "3rem" }}>
             <span className="visually-hidden">Loading...</span>
           </div>
-          <p className="mt-3 text-muted">Loading articles...</p>
+          <p className="text-muted">Loading articles...</p>
         </div>
       ) : (
-        <div className="card shadow-sm">
-          <div className="card-body">
-            {/* Export Buttons */}
-            {filteredArticles.length > 0 && (
-              <div className="d-flex justify-content-end gap-2 mb-3">
-                <button className="btn btn-outline-success btn-sm" onClick={handleExcelDownload}>
-                  📊 Export Excel
-                </button>
-                <CSVLink
-                  data={getExportData()}
-                  filename="articles.csv"
-                  className="btn btn-outline-secondary btn-sm"
-                >
-                  📥 Export CSV
-                </CSVLink>
-              </div>
-            )}
-
-            {/* Filters / Search Row */}
-            <div className="row mb-3 g-2">
-              <div className="col-md-3">
-                <input
-                  type="text"
-                  className="form-control"
-                  placeholder="Search by title"
-                  value={searchTitle}
-                  onChange={(e) => setSearchTitle(e.target.value)}
-                />
-              </div>
-              <div className="col-md-2">
-                <select
-                  className="form-select"
-                  value={filters.project}
-                  onChange={(e) => setFilters(prev => ({ ...prev, project: e.target.value }))}
-                >
-                  <option value="">All Projects</option>
-                  {projectOptions.map((proj, idx) => (
-                    <option key={idx} value={proj}>{proj}</option>
-                  ))}
-                </select>
-              </div>
-              <div className="col-md-1">
-                <select
-                  className="form-select"
-                  value={filters.month}
-                  onChange={(e) => setFilters(prev => ({ ...prev, month: e.target.value }))}
-                >
-                  <option value="">All Months</option>
-                  {monthOptions.map((m, idx) => (
-                    <option key={idx} value={m}>{m}</option>
-                  ))}
-                </select>
-              </div>
-              <div className="col-md-2">
-                <select
-                  className="form-select"
-                  value={filters.status}
-                  onChange={(e) => setFilters(prev => ({ ...prev, status: e.target.value }))}
-                >
-                  <option value="">All Statuses</option>
-                  {statusOptions.map((st, idx) => (
-                    <option key={idx} value={st}>{st}</option>
-                  ))}
-                </select>
-              </div>
-              <div className="col-md-2">
-                <select
-                  className="form-select"
-                  value={filters.writer}
-                  onChange={(e) => setFilters(prev => ({ ...prev, writer: e.target.value }))}
-                >
-                  <option value="">All Writers</option>
-                  {writerOptions.map(w => (
-                    <option key={w._id} value={w._id}>{w.name}</option>
-                  ))}
-                </select>
-              </div>
-              <div className="col-md-2">
-                <select
-                  className="form-select"
-                  value={filters.manager}
-                  onChange={(e) => setFilters(prev => ({ ...prev, manager: e.target.value }))}
-                >
-                  <option value="">All Managers</option>
-                  {managerOptions.map(mgr => (
-                    <option key={mgr._id} value={mgr._id}>{mgr.name}</option>
-                  ))}
-                </select>
+        <>
+          {/* Main Content Card */}
+          <div className="card border-0 shadow-sm">
+            <div className="card-header bg-white border-bottom py-3">
+              <div className="d-flex flex-column flex-md-row justify-content-between align-items-start align-items-md-center gap-3">
+                <div className="d-flex align-items-center gap-2">
+                  <h5 className="mb-0 fw-semibold">Articles List</h5>
+                  {hasActiveFilters() && (
+                    <span className="badge bg-primary rounded-pill">{filteredArticles.length} results</span>
+                  )}
+                </div>
+                <div className="d-flex gap-2 flex-wrap">
+                  <button 
+                    className="btn btn-outline-secondary btn-sm"
+                    onClick={() => setShowFilters(!showFilters)}
+                  >
+                    🔍 {showFilters ? "Hide Filters" : "Show Filters"}
+                  </button>
+                  {filteredArticles.length > 0 && (
+                    <>
+                      <button 
+                        className="btn btn-outline-success btn-sm" 
+                        onClick={handleExcelDownload}
+                      >
+                        📊 Excel
+                      </button>
+                      <CSVLink
+                        data={getExportData()}
+                        filename={`articles_${new Date().toISOString().split('T')[0]}.csv`}
+                        className="btn btn-outline-secondary btn-sm"
+                      >
+                        📥 CSV
+                      </CSVLink>
+                    </>
+                  )}
+                </div>
               </div>
             </div>
 
-            {/* Articles Table */}
-            {filteredArticles.length === 0 ? (
-              <p className="text-center text-muted py-5">No articles to display.</p>
-            ) : (
-              <div className="table-responsive shadow-sm rounded overflow-auto">
-                <table className="table table-striped table-bordered table-hover align-middle">
-                  <thead className="table-light text-center sticky-top">
-                    <tr>
-                      <th>Title</th>
-                      <th>Project</th>
-                      <th className="d-none d-md-table-cell">Month</th>
-                      <th>Status</th>
-                      <th className="d-none d-lg-table-cell">Writer</th>
-                      <th className="d-none d-lg-table-cell">Manager</th>
-                      <th>Content Link</th>
-                      <th>Publish Link</th>
-                      <th className="d-none d-md-table-cell">Date</th>
-                      <th>Actions</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {filteredArticles.map(article => {
-                      const isEditing = editingId === article._id;
-                      const canEditContent = (isWriter && article.topic?.project?.writer === user.id) || isAdmin;
-                      const canEditPublish = (isManager && article.topic?.project?.manager === user.id) || isAdmin;
-                      const canDelete = isAdmin || (isManager && article.topic?.project?.manager === user.id);
-                      const canRequestRevision = ((isManager && article.topic?.project?.manager === user.id) || isAdmin) && article.status === "submitted";
+            <div className="card-body p-3 p-lg-4">
+              {/* Filters Section */}
+              {showFilters && (
+                <div className="mb-4 p-3 bg-light rounded border">
+                  <div className="d-flex justify-content-between align-items-center mb-3">
+                    <h6 className="mb-0 fw-semibold">
+                      🔍 Search & Filters
+                    </h6>
+                    {hasActiveFilters() && (
+                      <button 
+                        className="btn btn-sm btn-outline-danger"
+                        onClick={clearAllFilters}
+                      >
+                        ✖ Clear All
+                      </button>
+                    )}
+                  </div>
+                  
+                  <div className="row g-3">
+                    <div className="col-12 col-md-6 col-lg-4">
+                      <label className="form-label small fw-semibold text-muted mb-1">
+                        Search by Title
+                      </label>
+                      <input
+                        type="text"
+                        className="form-control"
+                        placeholder="Type to search..."
+                        value={searchTitle}
+                        onChange={(e) => setSearchTitle(e.target.value)}
+                      />
+                    </div>
+                    <div className="col-6 col-md-6 col-lg-4">
+                      <label className="form-label small fw-semibold text-muted mb-1">
+                        Project
+                      </label>
+                      <select
+                        className="form-select"
+                        value={filters.project}
+                        onChange={(e) => setFilters(prev => ({ ...prev, project: e.target.value }))}
+                      >
+                        <option value="">All Projects</option>
+                        {projectOptions.map((proj, idx) => (
+                          <option key={idx} value={proj}>{proj}</option>
+                        ))}
+                      </select>
+                    </div>
+                    <div className="col-6 col-md-4 col-lg-2">
+                      <label className="form-label small fw-semibold text-muted mb-1">
+                        Month
+                      </label>
+                      <select
+                        className="form-select"
+                        value={filters.month}
+                        onChange={(e) => setFilters(prev => ({ ...prev, month: e.target.value }))}
+                      >
+                        <option value="">All</option>
+                        {monthOptions.map((m, idx) => (
+                          <option key={idx} value={m}>{m}</option>
+                        ))}
+                      </select>
+                    </div>
+                    <div className="col-6 col-md-4 col-lg-2">
+                      <label className="form-label small fw-semibold text-muted mb-1">
+                        Status
+                      </label>
+                      <select
+                        className="form-select"
+                        value={filters.status}
+                        onChange={(e) => setFilters(prev => ({ ...prev, status: e.target.value }))}
+                      >
+                        <option value="">All</option>
+                        {statusOptions.map((st, idx) => (
+                          <option key={idx} value={st}>{st}</option>
+                        ))}
+                      </select>
+                    </div>
+                    <div className="col-6 col-md-4 col-lg-3">
+                      <label className="form-label small fw-semibold text-muted mb-1">
+                        Writer
+                      </label>
+                      <select
+                        className="form-select"
+                        value={filters.writer}
+                        onChange={(e) => setFilters(prev => ({ ...prev, writer: e.target.value }))}
+                      >
+                        <option value="">All Writers</option>
+                        {writerOptions.map(w => (
+                          <option key={w._id} value={w._id}>{w.name}</option>
+                        ))}
+                      </select>
+                    </div>
+                    <div className="col-6 col-md-4 col-lg-3">
+                      <label className="form-label small fw-semibold text-muted mb-1">
+                        Manager
+                      </label>
+                      <select
+                        className="form-select"
+                        value={filters.manager}
+                        onChange={(e) => setFilters(prev => ({ ...prev, manager: e.target.value }))}
+                      >
+                        <option value="">All Managers</option>
+                        {managerOptions.map(mgr => (
+                          <option key={mgr._id} value={mgr._id}>{mgr.name}</option>
+                        ))}
+                      </select>
+                    </div>
+                  </div>
+                </div>
+              )}
 
-                      return (
-                        <tr key={article._id}>
-                          <td style={{ maxWidth: "200px", wordWrap: "break-word" }}>
-                            {article.topic?.title || "—"}
-                          </td>
-                          <td>{article.topic?.project?.name || "—"}</td>
-                          <td className="d-none d-md-table-cell">{article.topic?.month || "—"}</td>
-                          <td>
-                            <span className={`badge bg-${getStatusBadge(article.status)}`}>
-                              {article.status || "draft"}
-                            </span>
-                          </td>
-                          <td className="d-none d-lg-table-cell">{getUserName(article.topic?.project?.writer)}</td>
-                          <td className="d-none d-lg-table-cell">{getUserName(article.topic?.project?.manager)}</td>
-                          <td>
-                            {isEditing && canEditContent ? (
-                              <input
-                                type="url"
-                                className="form-control form-control-sm"
-                                placeholder="Enter content link"
-                                value={editData.contentLink}
-                                onChange={(e) => handleEditChange("contentLink", e.target.value)}
-                                style={{ minWidth: "150px" }}
-                              />
-                            ) : article.contentLink ? (
-                              <a href={article.contentLink} target="_blank" rel="noreferrer">View</a>
-                            ) : "—"}
-                          </td>
-                          <td>
-                            {isEditing && canEditPublish ? (
-                              <input
-                                type="url"
-                                className="form-control form-control-sm"
-                                placeholder="Enter publish link"
-                                value={editData.publishLink}
-                                onChange={(e) => handleEditChange("publishLink", e.target.value)}
-                                style={{ minWidth: "150px" }}
-                              />
-                            ) : article.publishLink ? (
-                              <a href={article.publishLink} target="_blank" rel="noreferrer">View</a>
-                            ) : "—"}
-                          </td>
-                          <td className="d-none d-md-table-cell">{formatDate(article.updatedAt)}</td>
-                          <td>
-                            {isEditing ? (
-                              <div className="d-flex gap-1">
-                                <button
-                                  className="btn btn-success btn-sm"
-                                  onClick={() => saveChanges(article._id)}
-                                  disabled={canEditContent && !editData.contentLink}
-                                >
-                                  💾
-                                </button>
-                                <button
-                                  className="btn btn-secondary btn-sm"
-                                  onClick={cancelEdit}
-                                >
-                                  ✖
-                                </button>
+              {/* Articles Table */}
+              {filteredArticles.length === 0 ? (
+                <div className="text-center py-5">
+                  <div className="mb-3" style={{ fontSize: "4rem", opacity: 0.3 }}>📭</div>
+                  <h5 className="text-muted mb-2">No articles found</h5>
+                  <p className="text-muted small">
+                    {hasActiveFilters() 
+                      ? "Try adjusting your filters or search criteria"
+                      : "Get started by creating your first article"
+                    }
+                  </p>
+                  {hasActiveFilters() && (
+                    <button className="btn btn-sm btn-outline-primary mt-2" onClick={clearAllFilters}>
+                      Clear Filters
+                    </button>
+                  )}
+                </div>
+              ) : (
+                <div className="table-responsive">
+                  <table className="table table-hover align-middle">
+                    <thead className="table-light">
+                      <tr>
+                        <th className="fw-semibold" style={{ minWidth: "200px" }}>Title</th>
+                        <th className="fw-semibold">Project</th>
+                        <th className="fw-semibold d-none d-md-table-cell">Month</th>
+                        <th className="fw-semibold">Status</th>
+                        <th className="fw-semibold d-none d-lg-table-cell">Writer</th>
+                        <th className="fw-semibold d-none d-lg-table-cell">Manager</th>
+                        <th className="fw-semibold text-center">Content</th>
+                        <th className="fw-semibold text-center">Publish</th>
+                        <th className="fw-semibold d-none d-md-table-cell">Updated</th>
+                        <th className="fw-semibold text-center">Actions</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {filteredArticles.map(article => {
+                        const isEditing = editingId === article._id;
+                        const canEditContent = (isWriter && article.topic?.project?.writer === user.id) || isAdmin;
+                        const canEditPublish = (isManager && article.topic?.project?.manager === user.id) || isAdmin;
+                        const canDelete = isAdmin || (isManager && article.topic?.project?.manager === user.id);
+                        const canRequestRevision = ((isManager && article.topic?.project?.manager === user.id) || isAdmin) && article.status === "submitted";
+
+                        return (
+                          <tr key={article._id}>
+                            <td>
+                              <div className="fw-semibold text-dark" style={{ maxWidth: "300px" }}>
+                                {article.topic?.title || <span className="text-muted">No title</span>}
                               </div>
-                            ) : (
-                              <div className="d-flex gap-1 flex-wrap">
-                                {(canEditContent || canEditPublish) && (
+                            </td>
+                            <td>
+                              <span className="badge bg-secondary bg-opacity-25 text-dark">
+                                {article.topic?.project?.name || "—"}
+                              </span>
+                            </td>
+                            <td className="d-none d-md-table-cell">
+                              <small className="text-muted">{article.topic?.month || "—"}</small>
+                            </td>
+                            <td>
+                              <span className={`badge bg-${getStatusBadge(article.status)}`}>
+                                {getStatusIcon(article.status)} {article.status || "draft"}
+                              </span>
+                            </td>
+                            <td className="d-none d-lg-table-cell">
+                              <small>{getUserName(article.topic?.project?.writer)}</small>
+                            </td>
+                            <td className="d-none d-lg-table-cell">
+                              <small>{getUserName(article.topic?.project?.manager)}</small>
+                            </td>
+                            <td className="text-center">
+                              {isEditing && canEditContent ? (
+                                <input
+                                  type="url"
+                                  className="form-control form-control-sm"
+                                  placeholder="https://..."
+                                  value={editData.contentLink}
+                                  onChange={(e) => handleEditChange("contentLink", e.target.value)}
+                                  style={{ minWidth: "180px" }}
+                                />
+                              ) : article.contentLink ? (
+                                <a 
+                                  href={article.contentLink} 
+                                  target="_blank" 
+                                  rel="noreferrer"
+                                  className="btn btn-sm btn-outline-primary"
+                                >
+                                  📄 View
+                                </a>
+                              ) : (
+                                <span className="text-muted small">—</span>
+                              )}
+                            </td>
+                            <td className="text-center">
+                              {isEditing && canEditPublish ? (
+                                <input
+                                  type="url"
+                                  className="form-control form-control-sm"
+                                  placeholder="https://..."
+                                  value={editData.publishLink}
+                                  onChange={(e) => handleEditChange("publishLink", e.target.value)}
+                                  style={{ minWidth: "180px" }}
+                                />
+                              ) : article.publishLink ? (
+                                <a 
+                                  href={article.publishLink} 
+                                  target="_blank" 
+                                  rel="noreferrer"
+                                  className="btn btn-sm btn-outline-success"
+                                >
+                                  🌐 View
+                                </a>
+                              ) : (
+                                <span className="text-muted small">—</span>
+                              )}
+                            </td>
+                            <td className="d-none d-md-table-cell">
+                              <small className="text-muted">{formatDate(article.updatedAt)}</small>
+                            </td>
+                            <td>
+                              {isEditing ? (
+                                <div className="d-flex gap-1 justify-content-center">
                                   <button
-                                    className="btn btn-outline-primary btn-sm"
-                                    onClick={() => startEdit(article)}
+                                    className="btn btn-success btn-sm"
+                                    onClick={() => saveChanges(article._id)}
+                                    disabled={canEditContent && !editData.contentLink}
+                                    title="Save changes"
                                   >
-                                    ✏️ Edit
+                                    💾
                                   </button>
-                                )}
-                                {canDelete && (
                                   <button
-                                    className="btn btn-outline-danger btn-sm"
-                                    onClick={() => deleteArticle(article._id)}
+                                    className="btn btn-secondary btn-sm"
+                                    onClick={cancelEdit}
+                                    title="Cancel"
                                   >
-                                    🗑️
+                                    ✖
                                   </button>
-                                )}
-                                {canRequestRevision && (
-                                  <button
-                                    className="btn btn-outline-warning btn-sm"
-                                    onClick={() => openRevisionModal(article)}
-                                  >
-                                    🔄
-                                  </button>
-                                )}
-                              </div>
-                            )}
-                          </td>
-                        </tr>
-                      );
-                    })}
-                  </tbody>
-                </table>
-              </div>
-            )}
+                                </div>
+                              ) : (
+                                <div className="d-flex gap-1 justify-content-center flex-wrap">
+                                  {(canEditContent || canEditPublish) && (
+                                    <button
+                                      className="btn btn-outline-primary btn-sm"
+                                      onClick={() => startEdit(article)}
+                                      title="Edit article"
+                                    >
+                                      ✏️
+                                    </button>
+                                  )}
+                                  {canRequestRevision && (
+                                    <button
+                                      className="btn btn-outline-warning btn-sm"
+                                      onClick={() => openRevisionModal(article)}
+                                      title="Request revision"
+                                    >
+                                      🔄
+                                    </button>
+                                  )}
+                                  {canDelete && (
+                                    <button
+                                      className="btn btn-outline-danger btn-sm"
+                                      onClick={() => deleteArticle(article._id)}
+                                      title="Delete article"
+                                    >
+                                      🗑️
+                                    </button>
+                                  )}
+                                </div>
+                              )}
+                            </td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+            </div>
           </div>
-        </div>
+        </>
       )}
 
       {revisionModal.show && (
