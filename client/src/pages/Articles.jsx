@@ -364,9 +364,7 @@ export default function Articles() {
               {showFilters && (
                 <div className="mb-4 p-3 bg-light rounded border">
                   <div className="d-flex justify-content-between align-items-center mb-3">
-                    <h6 className="mb-0 fw-semibold">
-                      🔍 Search & Filters
-                    </h6>
+                    <h6 className="mb-0 fw-semibold">🔍 Search & Filters</h6>
                     {hasActiveFilters() && (
                       <button 
                         className="btn btn-sm btn-outline-danger"
@@ -376,8 +374,9 @@ export default function Articles() {
                       </button>
                     )}
                   </div>
-                  
+
                   <div className="row g-3">
+                    {/* Search by Title */}
                     <div className="col-12 col-md-6 col-lg-4">
                       <label className="form-label small fw-semibold text-muted mb-1">
                         Search by Title
@@ -390,22 +389,28 @@ export default function Articles() {
                         onChange={(e) => setSearchTitle(e.target.value)}
                       />
                     </div>
-                    <div className="col-6 col-md-6 col-lg-4">
-                      <label className="form-label small fw-semibold text-muted mb-1">
-                        Project
-                      </label>
-                      <select
-                        className="form-select"
-                        value={filters.project}
-                        onChange={(e) => setFilters(prev => ({ ...prev, project: e.target.value }))}
-                      >
-                        <option value="">All Projects</option>
-                        {projectOptions.map((proj, idx) => (
-                          <option key={idx} value={proj}>{proj}</option>
-                        ))}
-                      </select>
-                    </div>
-                    <div className="col-6 col-md-4 col-lg-2">
+
+                    {/* Project — only for admins */}
+                    {isAdmin && (
+                      <div className="col-6 col-md-6 col-lg-4">
+                        <label className="form-label small fw-semibold text-muted mb-1">
+                          Project
+                        </label>
+                        <select
+                          className="form-select"
+                          value={filters.project}
+                          onChange={(e) => setFilters(prev => ({ ...prev, project: e.target.value }))}
+                        >
+                          <option value="">All Projects</option>
+                          {projectOptions.map((proj, idx) => (
+                            <option key={idx} value={proj}>{proj}</option>
+                          ))}
+                        </select>
+                      </div>
+                    )}
+
+                    {/* Month */}
+                    <div className={`col-6 ${isAdmin ? 'col-md-4 col-lg-2' : 'col-md-6 col-lg-3'}`}>
                       <label className="form-label small fw-semibold text-muted mb-1">
                         Month
                       </label>
@@ -420,7 +425,9 @@ export default function Articles() {
                         ))}
                       </select>
                     </div>
-                    <div className="col-6 col-md-4 col-lg-2">
+
+                    {/* Status */}
+                    <div className={`col-6 ${isAdmin ? 'col-md-4 col-lg-2' : 'col-md-6 col-lg-3'}`}>
                       <label className="form-label small fw-semibold text-muted mb-1">
                         Status
                       </label>
@@ -435,36 +442,44 @@ export default function Articles() {
                         ))}
                       </select>
                     </div>
-                    <div className="col-6 col-md-4 col-lg-3">
-                      <label className="form-label small fw-semibold text-muted mb-1">
-                        Writer
-                      </label>
-                      <select
-                        className="form-select"
-                        value={filters.writer}
-                        onChange={(e) => setFilters(prev => ({ ...prev, writer: e.target.value }))}
-                      >
-                        <option value="">All Writers</option>
-                        {writerOptions.map(w => (
-                          <option key={w._id} value={w._id}>{w.name}</option>
-                        ))}
-                      </select>
-                    </div>
-                    <div className="col-6 col-md-4 col-lg-3">
-                      <label className="form-label small fw-semibold text-muted mb-1">
-                        Manager
-                      </label>
-                      <select
-                        className="form-select"
-                        value={filters.manager}
-                        onChange={(e) => setFilters(prev => ({ ...prev, manager: e.target.value }))}
-                      >
-                        <option value="">All Managers</option>
-                        {managerOptions.map(mgr => (
-                          <option key={mgr._id} value={mgr._id}>{mgr.name}</option>
-                        ))}
-                      </select>
-                    </div>
+
+                    {/* Writer — only for admins */}
+                    {isAdmin && (
+                      <div className="col-6 col-md-4 col-lg-3">
+                        <label className="form-label small fw-semibold text-muted mb-1">
+                          Writer
+                        </label>
+                        <select
+                          className="form-select"
+                          value={filters.writer}
+                          onChange={(e) => setFilters(prev => ({ ...prev, writer: e.target.value }))}
+                        >
+                          <option value="">All Writers</option>
+                          {writerOptions.map(w => (
+                            <option key={w._id} value={w._id}>{w.name}</option>
+                          ))}
+                        </select>
+                      </div>
+                    )}
+
+                    {/* Manager — only for admins */}
+                    {isAdmin && (
+                      <div className="col-6 col-md-4 col-lg-3">
+                        <label className="form-label small fw-semibold text-muted mb-1">
+                          Manager
+                        </label>
+                        <select
+                          className="form-select"
+                          value={filters.manager}
+                          onChange={(e) => setFilters(prev => ({ ...prev, manager: e.target.value }))}
+                        >
+                          <option value="">All Managers</option>
+                          {managerOptions.map(mgr => (
+                            <option key={mgr._id} value={mgr._id}>{mgr.name}</option>
+                          ))}
+                        </select>
+                      </div>
+                    )}
                   </div>
                 </div>
               )}
