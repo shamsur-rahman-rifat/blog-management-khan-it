@@ -2,6 +2,10 @@
 
 import topicModel from '../model/Topic.js';
 import Article from '../model/Article.js';
+import natural from 'natural';
+
+const TfIdf = natural.TfIdf;
+const tokenizer = new natural.WordTokenizer();
 
 export const addTopic = async (req, res) => {
   try {
@@ -10,15 +14,38 @@ export const addTopic = async (req, res) => {
     reqBody.createdBy = createdBy;
     reqBody.writerAssignedAt  = new Date();
 
-    // Check if topic already exists for the same project and month
-    const existingTopic = await topicModel.findOne({
-      title: reqBody.title,
-      project: reqBody.project
-    });    
+    // Fetch existing topics for the same project
+    const existingTopics = await topicModel.find({ project });
 
-    if (existingTopic) {
-      return res.status(400).json({ message: 'Topic already exists for this project.' });
-    }    
+    // Check for similarity only if not forced
+    if (!force && existingTopics.length > 0) {
+      const tfidf = new TfIdf();
+      const tokenizer = new natural.WordTokenizer();
+
+      existingTopics.forEach(t => tfidf.addDocument(t.title));
+      const newTitleTokens = tokenizer.tokenize(title.toLowerCase());
+
+      let maxSimilarity = 0;
+      let mostSimilarTitle = '';
+
+      tfidf.documents.forEach((doc, index) => {
+        const existingTokens = tokenizer.tokenize(existingTopics[index].title.toLowerCase());
+        const similarity = natural.CosineSimilarity(newTitleTokens, existingTokens);
+
+        if (similarity > maxSimilarity) {
+          maxSimilarity = similarity;
+          mostSimilarTitle = existingTopics[index].title;
+        }
+      });
+
+      if (maxSimilarity > 0.8) {
+        return res.status(409).json({
+          message: 'Similar topic already exists.',
+          similarity: maxSimilarity,
+          similarTitle: mostSimilarTitle,
+        });
+      }
+    }
 
     // Create the topic
     const createdTopic = await topicModel.create(reqBody);

@@ -120,43 +120,65 @@ export default function ManagerTopics() {
     }
 
     setSaving(true);
-    try {
-      if (editingTopicId) {
-        await api.put(`/updateTopic/${editingTopicId}`, {
-          ...blogInputs[0],
-          project: selectedProjectId,
-          createdBy: user.email
-        });
-        alert('Topic updated successfully');
-      } else {
-        for (let blog of blogInputs) {
+  try {
+    if (editingTopicId) {
+      await api.put(`/updateTopic/${editingTopicId}`, {
+        ...blogInputs[0],
+        project: selectedProjectId,
+        createdBy: user.email
+      });
+      alert('Topic updated successfully');
+    } else {
+      for (let blog of blogInputs) {
+        try {
           await api.post('/addTopic', {
             ...blog,
             project: selectedProjectId,
             createdBy: user.email,
             status: 'assigned'
           });
+        } catch (error) {
+          if (
+            error.response &&
+            error.response.status === 409 &&
+            error.response.data.similarTitle
+          ) {
+            const userWantsToProceed = window.confirm(
+              `⚠️ Similar topic detected:\n"${error.response.data.similarTitle}"\n\nDo you want to add it anyway?`
+            );
+
+            if (userWantsToProceed) {
+              // Retry with force = true
+              await api.post('/addTopic', {
+                ...blog,
+                project: selectedProjectId,
+                createdBy: user.email,
+                status: 'assigned',
+                force: true
+              });
+            } else {
+              throw new Error('Topic addition cancelled due to similarity.');
+            }
+          } else {
+            throw error;
+          }
         }
-        alert('Blogs assigned successfully');
       }
 
-      setSelectedProjectId('');
-      setBlogInputs([]);
-      setEditingTopicId(null);
-      loadData();
-    } catch (error) {
-    console.error('Error saving:', error);
-
-    // Check if the error message matches the 'Topic already exists' message
-    if (error.response && error.response.status === 400 && error.response.data.message === 'Topic already exists for this project.') {
-      alert('Topic already exists for this project. Please choose another title.');
-    } else {
-      alert('Failed to save: ' + error.message);
+      alert('Blogs assigned successfully');
     }
+
+    setSelectedProjectId('');
+    setBlogInputs([]);
+    setEditingTopicId(null);
+    loadData();
+  } catch (error) {
+    console.error('Error saving:', error);
+    alert('Failed to save: ' + error.message);
   } finally {
     setSaving(false);
-    }
-  };
+  }
+};
 
   const handleEdit = (topic) => {
     setEditingTopicId(topic._id);
