@@ -145,10 +145,16 @@ export default function ManagerTopics() {
       setEditingTopicId(null);
       loadData();
     } catch (error) {
-      console.error('Error saving:', error);
+    console.error('Error saving:', error);
+
+    // Check if the error message matches the 'Topic already exists' message
+    if (error.response && error.response.status === 400 && error.response.data.message === 'Topic already exists for this project.') {
+      alert('Topic already exists for this project. Please choose another title or project.');
+    } else {
       alert('Failed to save: ' + error.message);
-    } finally {
-      setSaving(false);
+    }
+  } finally {
+    setSaving(false);
     }
   };
 

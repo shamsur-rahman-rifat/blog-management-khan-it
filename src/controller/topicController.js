@@ -10,6 +10,16 @@ export const addTopic = async (req, res) => {
     reqBody.createdBy = createdBy;
     reqBody.writerAssignedAt  = new Date();
 
+    // Check if topic already exists for the same project and month
+    const existingTopic = await topicModel.findOne({
+      title: reqBody.title,
+      project: reqBody.project
+    });    
+
+    if (existingTopic) {
+      return res.status(400).json({ message: 'Topic already exists for this project.' });
+    }    
+
     // Create the topic
     const createdTopic = await topicModel.create(reqBody);
 
