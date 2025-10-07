@@ -16,9 +16,9 @@ export default function ManagerTopics() {
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
   const [selectedMonth, setSelectedMonth] = useState('');
+  const [expandedRows, setExpandedRows] = useState(new Set());
   const formRef = useRef(null);
   const titleInputRef = useRef(null);
-
 
   const isManager = user?.roles?.includes('manager');
   const isWriter = user?.roles?.includes('writer');
@@ -120,65 +120,64 @@ export default function ManagerTopics() {
     }
 
     setSaving(true);
-  try {
-    if (editingTopicId) {
-      await api.put(`/updateTopic/${editingTopicId}`, {
-        ...blogInputs[0],
-        project: selectedProjectId,
-        createdBy: user.email
-      });
-      alert('Topic updated successfully');
-    } else {
-      for (let blog of blogInputs) {
-        try {
-          await api.post('/addTopic', {
-            ...blog,
-            project: selectedProjectId,
-            createdBy: user.email,
-            status: 'assigned'
-          });
-        } catch (error) {
-          if (
-            error.response &&
-            error.response.status === 409 &&
-            error.response.data.similarTitle
-          ) {
-            const userWantsToProceed = window.confirm(
-              `⚠️ Similar topic detected:\n"${error.response.data.similarTitle}"\n\nDo you want to add it anyway?`
-            );
+    try {
+      if (editingTopicId) {
+        await api.put(`/updateTopic/${editingTopicId}`, {
+          ...blogInputs[0],
+          project: selectedProjectId,
+          createdBy: user.email
+        });
+        alert('Topic updated successfully');
+      } else {
+        for (let blog of blogInputs) {
+          try {
+            await api.post('/addTopic', {
+              ...blog,
+              project: selectedProjectId,
+              createdBy: user.email,
+              status: 'assigned'
+            });
+          } catch (error) {
+            if (
+              error.response &&
+              error.response.status === 409 &&
+              error.response.data.similarTitle
+            ) {
+              const userWantsToProceed = window.confirm(
+                `⚠️ Similar topic detected:\n"${error.response.data.similarTitle}"\n\nDo you want to add it anyway?`
+              );
 
-            if (userWantsToProceed) {
-              // Retry with force = true
-              await api.post('/addTopic', {
-                ...blog,
-                project: selectedProjectId,
-                createdBy: user.email,
-                status: 'assigned',
-                force: true
-              });
+              if (userWantsToProceed) {
+                await api.post('/addTopic', {
+                  ...blog,
+                  project: selectedProjectId,
+                  createdBy: user.email,
+                  status: 'assigned',
+                  force: true
+                });
+              } else {
+                throw new Error('Topic addition cancelled due to similarity.');
+              }
             } else {
-              throw new Error('Topic addition cancelled due to similarity.');
+              throw error;
             }
-          } else {
-            throw error;
           }
         }
+
+        alert('Blogs assigned successfully');
       }
 
-      alert('Blogs assigned successfully');
+      setSelectedProjectId('');
+      setBlogInputs([]);
+      setEditingTopicId(null);
+      loadData();
+    } catch (error) {
+      console.error('Error saving:', error);
+      alert('Failed to save: ' + error.message);
+    } finally {
+      setSaving(false);
     }
-
-    setSelectedProjectId('');
-    setBlogInputs([]);
-    setEditingTopicId(null);
-    loadData();
-  } catch (error) {
-    console.error('Error saving:', error);
-    alert('Failed to save: ' + error.message);
-  } finally {
-    setSaving(false);
-  }
-};
+  };
 
   const handleEdit = (topic) => {
     setEditingTopicId(topic._id);
@@ -189,19 +188,17 @@ export default function ManagerTopics() {
       instructions: topic.instructions || '',
       month: topic.month || ''
     }]);
-    // Smooth scroll to form and focus title input
     setTimeout(() => {
       formRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
       titleInputRef.current?.focus();
-    }, 100);    
+    }, 100);
   };
 
-const handleCancelEdit = () => {
-  setEditingTopicId(null);
-  setSelectedProjectId('');
-  setBlogInputs([]);
-};
-
+  const handleCancelEdit = () => {
+    setEditingTopicId(null);
+    setSelectedProjectId('');
+    setBlogInputs([]);
+  };
 
   const handleDelete = async (topicId) => {
     if (!window.confirm('Are you sure you want to delete this topic?')) return;
@@ -217,6 +214,21 @@ const handleCancelEdit = () => {
     } finally {
       setLoading(false);
     }
+  };
+
+  const toggleRowExpansion = (topicId) => {
+    const newExpanded = new Set(expandedRows);
+    if (newExpanded.has(topicId)) {
+      newExpanded.delete(topicId);
+    } else {
+      newExpanded.add(topicId);
+    }
+    setExpandedRows(newExpanded);
+  };
+
+  const truncateText = (text, maxLength = 50) => {
+    if (!text) return '—';
+    return text.length > maxLength ? text.substring(0, maxLength) + '...' : text;
   };
 
   const getUniqueMonthsFromTopics = () => {
@@ -256,242 +268,356 @@ const handleCancelEdit = () => {
     ? topics.filter(topic => topic.month === selectedMonth)
     : topics;
 
-return (
-  <div className="container py-4">
-    <h3 className="mb-4 text-center">🛠️ Manage Your Blogs</h3>
+  return (
+    <div className="container-fluid px-3 px-md-4 py-4" style={{ maxWidth: '1400px' }}>
+      <div className="mb-4">
+        <h2 className="fw-bold text-center mb-2" style={{ color: '#1a1a1a' }}>
+          🛠️ Manage Your Blogs
+        </h2>
+        <p className="text-center text-muted mb-0">
+          {isManager ? 'Assign and manage blog topics for your projects' : 'View your assigned blog topics'}
+        </p>
+      </div>
 
-    {/* 📌 Manager Only Form Section */}
-    {isManager && (
-      <div className="card shadow-sm mb-4" ref={formRef}>
-        <div className="card-body">
-          <h5 className="card-title mb-3">📌 Assign Blog Topics</h5>
+      {/* Manager Form Section */}
+      {isManager && (
+        <div className="card border-0 shadow-sm mb-4" ref={formRef} style={{ borderRadius: '12px' }}>
+          <div className="card-body p-4">
+            <div className="d-flex align-items-center mb-4">
+              <div className="bg-primary bg-opacity-10 rounded-circle p-2 me-3">
+                <span style={{ fontSize: '24px' }}>📌</span>
+              </div>
+              <div>
+                <h5 className="mb-0 fw-bold">Assign Blog Topics</h5>
+                <small className="text-muted">Create and assign topics to your writers</small>
+              </div>
+            </div>
 
-          {/* Project Dropdown */}
-          <div className="mb-4">
-            <label className="form-label fw-semibold">Select Project</label>
-            <select
-              className="form-select"
-              value={selectedProjectId}
-              onChange={(e) => handleProjectChange(e.target.value)}
-              disabled={loading || saving}
-            >
-              <option value="">-- Select Project --</option>
-              {projects
-                .filter(project => project.status !== 'paused')
-                .map(project => (
-                  <option key={project._id} value={project._id}>
-                    {project.name} ({project.word || 0} blogs)
-                  </option>
-                ))}
-            </select>
-          </div>
+            {/* Project Dropdown */}
+            <div className="mb-4">
+              <label className="form-label fw-semibold mb-2">
+                <span className="text-danger">*</span> Select Project
+              </label>
+              <select
+                className="form-select form-select-lg"
+                style={{ borderRadius: '8px' }}
+                value={selectedProjectId}
+                onChange={(e) => handleProjectChange(e.target.value)}
+                disabled={loading || saving}
+              >
+                <option value="">-- Choose a project --</option>
+                {projects
+                  .filter(project => project.status !== 'paused')
+                  .map(project => (
+                    <option key={project._id} value={project._id}>
+                      {project.name} • {project.word || 0} blog{project.word !== 1 ? 's' : ''}
+                    </option>
+                  ))}
+              </select>
+            </div>
 
-          {/* Blog Inputs */}
-          {blogInputs.length > 0 && (
-            <>
-              <h6 className="mb-3 text-muted">
-                {editingTopicId ? '✏️ Editing Blog' : `📝 Assign ${blogInputs.length} Blog${blogInputs.length > 1 ? 's' : ''}`}
-              </h6>
+            {/* Blog Inputs */}
+            {blogInputs.length > 0 && (
+              <>
+                <div className="d-flex align-items-center mb-3 pb-3 border-bottom">
+                  <span className="badge bg-primary bg-opacity-10 text-primary px-3 py-2" style={{ fontSize: '14px' }}>
+                    {editingTopicId ? '✏️ Editing Blog' : `📝 ${blogInputs.length} Blog${blogInputs.length > 1 ? 's' : ''} to Assign`}
+                  </span>
+                </div>
 
-              {/* Each Blog Card */}
-              {blogInputs.map((blog, index) => (
-                <div key={index} className="border rounded p-3 mb-3 bg-light">
-                  <h6 className="mb-3 text-secondary">📝 Blog #{index + 1}</h6>
-
-                  <div className="row g-3">
-                    <div className="col-12 col-md-6">
-                      <input
-                        className="form-control"
-                        placeholder="Title *"
-                        value={blog.title}
-                        onChange={(e) => handleInputChange(index, 'title', e.target.value)}
-                        required
-                        ref={index === 0 ? titleInputRef : null}
-                      />
+                {blogInputs.map((blog, index) => (
+                  <div 
+                    key={index} 
+                    className="border rounded mb-3 p-4" 
+                    style={{ 
+                      borderRadius: '10px', 
+                      backgroundColor: '#f8f9fa',
+                      borderColor: '#dee2e6'
+                    }}
+                  >
+                    <div className="d-flex align-items-center mb-3">
+                      <span className="badge bg-secondary me-2" style={{ fontSize: '13px' }}>
+                        Blog #{index + 1}
+                      </span>
                     </div>
-                    <div className="col-12 col-md-6">
-                      <input
-                        className="form-control"
-                        placeholder="Keyword"
-                        value={blog.keyword}
-                        onChange={(e) => handleInputChange(index, 'keyword', e.target.value)}
-                      />
-                    </div>
-                    <div className="col-12">
-                      <textarea
-                        className="form-control"
-                        placeholder="Instructions"
-                        rows={2}
-                        value={blog.instructions}
-                        onChange={(e) => handleInputChange(index, 'instructions', e.target.value)}
-                      />
-                    </div>
-                    <div className="col-12 col-md-6">
-                      <select
-                        className="form-select"
-                        value={blog.month}
-                        onChange={(e) => handleInputChange(index, 'month', e.target.value)}
-                        required
-                      >
-                        <option value="">-- Select Month * --</option>
-                        {getMonths().map(month => (
-                          <option key={month} value={month}>{month}</option>
-                        ))}
-                      </select>
+
+                    <div className="row g-3">
+                      <div className="col-12 col-lg-6">
+                        <label className="form-label text-muted small mb-1">
+                          <span className="text-danger">*</span> Blog Title
+                        </label>
+                        <input
+                          className="form-control"
+                          style={{ borderRadius: '6px' }}
+                          placeholder="Enter blog title..."
+                          value={blog.title}
+                          onChange={(e) => handleInputChange(index, 'title', e.target.value)}
+                          required
+                          ref={index === 0 ? titleInputRef : null}
+                        />
+                      </div>
+                      <div className="col-12 col-lg-6">
+                        <label className="form-label text-muted small mb-1">Keyword(s)</label>
+                        <input
+                          className="form-control"
+                          style={{ borderRadius: '6px' }}
+                          placeholder="e.g., SEO, marketing, digital"
+                          value={blog.keyword}
+                          onChange={(e) => handleInputChange(index, 'keyword', e.target.value)}
+                        />
+                      </div>
+                      <div className="col-12">
+                        <label className="form-label text-muted small mb-1">Instructions</label>
+                        <textarea
+                          className="form-control"
+                          style={{ borderRadius: '6px' }}
+                          placeholder="Add any special instructions for the writer... We recommend to give the content outline in a public doc file"
+                          rows={3}
+                          value={blog.instructions}
+                          onChange={(e) => handleInputChange(index, 'instructions', e.target.value)}
+                        />
+                      </div>
+                      <div className="col-12 col-md-6">
+                        <label className="form-label text-muted small mb-1">
+                          <span className="text-danger">*</span> Target Month
+                        </label>
+                        <select
+                          className="form-select"
+                          style={{ borderRadius: '6px' }}
+                          value={blog.month}
+                          onChange={(e) => handleInputChange(index, 'month', e.target.value)}
+                          required
+                        >
+                          <option value="">-- Select month --</option>
+                          {getMonths().map(month => (
+                            <option key={month} value={month}>{month}</option>
+                          ))}
+                        </select>
+                      </div>
                     </div>
                   </div>
-                </div>
-              ))}
+                ))}
 
-              {/* Buttons */}
-              <div className="d-flex flex-column flex-sm-row gap-2 mt-3">
-                <button
-                  className={`btn flex-fill ${editingTopicId ? 'btn-primary' : 'btn-success'}`}
-                  onClick={handleSave}
-                  disabled={saving}
-                >
-                  {saving ? (
-                    <>
-                      <span className="spinner-border spinner-border-sm me-2"></span>
-                      Saving...
-                    </>
-                  ) : editingTopicId ? (
-                    '✅ Update Blog'
-                  ) : (
-                    `✅ Assign ${blogInputs.length} Blog${blogInputs.length > 1 ? 's' : ''}`
-                  )}
-                </button>
-
-                {blogInputs.length > 0 && (
+                {/* Action Buttons */}
+                <div className="d-flex flex-column flex-sm-row gap-2 mt-4">
                   <button
-                    className="btn btn-outline-secondary flex-fill"
+                    className={`btn btn-lg flex-fill ${editingTopicId ? 'btn-primary' : 'btn-success'}`}
+                    style={{ borderRadius: '8px', fontWeight: '500' }}
+                    onClick={handleSave}
+                    disabled={saving}
+                  >
+                    {saving ? (
+                      <>
+                        <span className="spinner-border spinner-border-sm me-2"></span>
+                        Saving...
+                      </>
+                    ) : editingTopicId ? (
+                      '✅ Update Blog'
+                    ) : (
+                      `✅ Assign ${blogInputs.length} Blog${blogInputs.length > 1 ? 's' : ''}`
+                    )}
+                  </button>
+
+                  <button
+                    className="btn btn-lg btn-outline-secondary flex-fill"
+                    style={{ borderRadius: '8px', fontWeight: '500' }}
                     onClick={handleCancelEdit}
                     disabled={saving}
                   >
                     ❌ Cancel
                   </button>
-                )}
-              </div>
-            </>
-          )}
-        </div>
-      </div>
-    )}
-
-    {/* 📋 Topics Table */}
-    <div className="card shadow-sm">
-      <div className="card-body">
-        {/* Header and Filter */}
-        <div className="d-flex flex-column flex-md-row justify-content-between align-items-start align-items-md-center mb-3 gap-3">
-          <h5 className="card-title mb-0">📋 Your Blog Topics</h5>
-
-          <div className="d-flex flex-wrap gap-2">
-            <select
-              className="form-select form-select-sm"
-              value={selectedMonth}
-              onChange={(e) => setSelectedMonth(e.target.value)}
-            >
-              <option value="">All Months</option>
-              {getUniqueMonthsFromTopics().map(month => (
-                <option key={month} value={month}>{month}</option>
-              ))}
-            </select>
-
-            {topics.length > 0 && (
-              <>
-                <CSVLink
-                  data={getExportData()}
-                  headers={csvHeaders}
-                  filename="blog_topics.csv"
-                  className="btn btn-outline-secondary btn-sm"
-                >
-                  📤 Export CSV
-                </CSVLink>
-                <button
-                  className="btn btn-outline-success btn-sm"
-                  onClick={handleExportExcel}
-                >
-                  📊 Export Excel
-                </button>
+                </div>
               </>
             )}
           </div>
         </div>
+      )}
 
-        {/* Loading or Empty State */}
-        {loading ? (
-          <div className="text-center py-5">
-            <div className="spinner-border text-primary" style={{ width: '3rem', height: '3rem' }}>
-              <span className="visually-hidden">Loading...</span>
+      {/* Topics Table */}
+      <div className="card border-0 shadow-sm" style={{ borderRadius: '12px' }}>
+        <div className="card-body p-4">
+          {/* Header and Filters */}
+          <div className="row align-items-center mb-4 g-3">
+            <div className="col-12 col-md-6">
+              <div className="d-flex align-items-center">
+                <div className="bg-info bg-opacity-10 rounded-circle p-2 me-3">
+                  <span style={{ fontSize: '24px' }}>📋</span>
+                </div>
+                <div>
+                  <h5 className="mb-0 fw-bold">Your Blog Topics</h5>
+                  <small className="text-muted">{filteredTopics.length} topic{filteredTopics.length !== 1 ? 's' : ''} found</small>
+                </div>
+              </div>
+            </div>
+
+            <div className="col-12 col-md-6">
+              <div className="d-flex flex-wrap gap-2 justify-content-md-end">
+                <select
+                  className="form-select form-select-sm"
+                  style={{ maxWidth: '180px', borderRadius: '6px' }}
+                  value={selectedMonth}
+                  onChange={(e) => setSelectedMonth(e.target.value)}
+                >
+                  <option value="">📅 All Months</option>
+                  {getUniqueMonthsFromTopics().map(month => (
+                    <option key={month} value={month}>{month}</option>
+                  ))}
+                </select>
+
+                {topics.length > 0 && (
+                  <>
+                    <CSVLink
+                      data={getExportData()}
+                      headers={csvHeaders}
+                      filename="blog_topics.csv"
+                      className="btn btn-outline-secondary btn-sm"
+                      style={{ borderRadius: '6px' }}
+                    >
+                      📤 CSV
+                    </CSVLink>
+                    <button
+                      className="btn btn-outline-success btn-sm"
+                      style={{ borderRadius: '6px' }}
+                      onClick={handleExportExcel}
+                    >
+                      📊 Excel
+                    </button>
+                  </>
+                )}
+              </div>
             </div>
           </div>
-        ) : filteredTopics.length === 0 ? (
-          <p className="text-center text-muted py-5">No topics found.</p>
-        ) : (
-          <div className="table-responsive">
-            <table className="table table-striped table-bordered table-hover align-middle text-center">
-              <thead className="table-light sticky-top">
-                <tr>
-                  <th>Project</th>
-                  <th>Month</th>
-                  <th>Title</th>
-                  <th>Keyword</th>
-                  <th>Instructions</th>
-                  <th>Writer</th>
-                  <th>Updated</th>
-                  {isManager && <th>Actions</th>}
-                </tr>
-              </thead>
-              <tbody>
-                {filteredTopics.map(topic => {
-                  const writerName = users.find(u => u._id === topic.project?.writer)?.name || '—';
-                  const canEdit = isManager && topic.createdBy === user.email;
-                  const updatedDate = topic.updatedAt
-                    ? new Date(topic.updatedAt).toLocaleDateString('en-GB', {
-                        day: '2-digit',
-                        month: 'short',
-                        year: 'numeric'
-                      })
-                    : '—';
 
-                  return (
-                    <tr key={topic._id}>
-                      <td>{topic.project?.name || 'N/A'}</td>
-                      <td>{topic.month}</td>
-                      <td>{topic.title}</td>
-                      <td>{topic.keyword || '—'}</td>
-                      <td>{topic.instructions || '—'}</td>
-                      <td>{writerName}</td>
-                      <td>{updatedDate}</td>
-                      {isManager && (
+          {/* Loading State */}
+          {loading ? (
+            <div className="text-center py-5">
+              <div className="spinner-border text-primary" style={{ width: '3rem', height: '3rem' }}>
+                <span className="visually-hidden">Loading...</span>
+              </div>
+              <p className="text-muted mt-3">Loading topics...</p>
+            </div>
+          ) : filteredTopics.length === 0 ? (
+            <div className="text-center py-5">
+              <div className="mb-3" style={{ fontSize: '48px', opacity: 0.3 }}>📝</div>
+              <p className="text-muted">No topics found. {isManager && 'Start by assigning some blogs above!'}</p>
+            </div>
+          ) : (
+            <div className="table-responsive" style={{ borderRadius: '8px', overflow: 'hidden' }}>
+              <table className="table table-hover align-middle mb-0">
+                <thead style={{ backgroundColor: '#f8f9fa', position: 'sticky', top: 0, zIndex: 10 }}>
+                  <tr>
+                    <th className="fw-semibold" style={{ minWidth: '140px' }}>Project</th>
+                    <th className="fw-semibold text-center" style={{ minWidth: '90px' }}>Month</th>
+                    <th className="fw-semibold" style={{ minWidth: '200px' }}>Title</th>
+                    <th className="fw-semibold" style={{ minWidth: '150px' }}>Keyword</th>
+                    <th className="fw-semibold" style={{ minWidth: '200px' }}>Instructions</th>
+                    <th className="fw-semibold text-center" style={{ minWidth: '120px' }}>Writer</th>
+                    <th className="fw-semibold text-center" style={{ minWidth: '100px' }}>Updated</th>
+                    {isManager && <th className="fw-semibold text-center" style={{ minWidth: '140px' }}>Actions</th>}
+                  </tr>
+                </thead>
+                <tbody>
+                  {filteredTopics.map(topic => {
+                    const writerName = users.find(u => u._id === topic.project?.writer)?.name || '—';
+                    const canEdit = isManager && topic.createdBy === user.email;
+                    const updatedDate = topic.updatedAt
+                      ? new Date(topic.updatedAt).toLocaleDateString('en-GB', {
+                          day: '2-digit',
+                          month: 'short',
+                          year: 'numeric'
+                        })
+                      : '—';
+                    const isExpanded = expandedRows.has(topic._id);
+                    const hasLongContent = 
+                      (topic.keyword && topic.keyword.length > 50) || 
+                      (topic.instructions && topic.instructions.length > 50);
+
+                    return (
+                      <tr key={topic._id} style={{ borderBottom: '1px solid #e9ecef' }}>
                         <td>
-                          {canEdit ? (
-                            <div className="d-flex flex-wrap justify-content-center gap-1">
-                              <button
-                                className="btn btn-sm btn-outline-primary"
-                                onClick={() => handleEdit(topic)}
-                              >
-                                ✏️ Edit
-                              </button>
-                              <button
-                                className="btn btn-sm btn-outline-danger"
-                                onClick={() => handleDelete(topic._id)}
-                              >
-                                🗑️ Delete
-                              </button>
-                            </div>
-                          ) : '—'}
+                          <span className="badge bg-light text-dark" style={{ fontSize: '12px' }}>
+                            {topic.project?.name || 'N/A'}
+                          </span>
                         </td>
-                      )}
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
-          </div>
-        )}
+                        <td className="text-center">
+                          <span className="badge bg-primary bg-opacity-10 text-primary">
+                            {topic.month}
+                          </span>
+                        </td>
+                        <td>
+                          <div className="fw-semibold" style={{ fontSize: '14px' }}>
+                            {topic.title}
+                          </div>
+                        </td>
+                        <td>
+                          <div style={{ fontSize: '13px' }}>
+                            {isExpanded ? topic.keyword || '—' : truncateText(topic.keyword, 50)}
+                            {topic.keyword && topic.keyword.length > 50 && (
+                              <button
+                                className="btn btn-link btn-sm p-0 ms-1"
+                                style={{ fontSize: '11px', textDecoration: 'none' }}
+                                onClick={() => toggleRowExpansion(topic._id)}
+                              >
+                                {isExpanded ? '▲ less' : '▼ more'}
+                              </button>
+                            )}
+                          </div>
+                        </td>
+                        <td>
+                          <div style={{ fontSize: '13px' }}>
+                            {isExpanded ? topic.instructions || '—' : truncateText(topic.instructions, 50)}
+                            {topic.instructions && topic.instructions.length > 50 && (
+                              <button
+                                className="btn btn-link btn-sm p-0 ms-1"
+                                style={{ fontSize: '11px', textDecoration: 'none' }}
+                                onClick={() => toggleRowExpansion(topic._id)}
+                              >
+                                {isExpanded ? '▲ less' : '▼ more'}
+                              </button>
+                            )}
+                          </div>
+                        </td>
+                        <td className="text-center">
+                          <span className="badge bg-secondary bg-opacity-10 text-secondary">
+                            {writerName}
+                          </span>
+                        </td>
+                        <td className="text-center">
+                          <small className="text-muted">{updatedDate}</small>
+                        </td>
+                        {isManager && (
+                          <td>
+                            {canEdit ? (
+                              <div className="d-flex justify-content-center gap-1 flex-wrap">
+                                <button
+                                  className="btn btn-sm btn-outline-primary"
+                                  style={{ borderRadius: '6px', fontSize: '12px' }}
+                                  onClick={() => handleEdit(topic)}
+                                >
+                                  ✏️ Edit
+                                </button>
+                                <button
+                                  className="btn btn-sm btn-outline-danger"
+                                  style={{ borderRadius: '6px', fontSize: '12px' }}
+                                  onClick={() => handleDelete(topic._id)}
+                                >
+                                  🗑️ Delete
+                                </button>
+                              </div>
+                            ) : (
+                              <span className="text-muted">—</span>
+                            )}
+                          </td>
+                        )}
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </div>
       </div>
     </div>
-  </div>
-);
+  );
 }

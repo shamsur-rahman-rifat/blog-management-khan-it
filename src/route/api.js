@@ -70,7 +70,7 @@ router.delete('/deleteTopic/:id', Authentication, checkRole('admin', 'manager'),
 // ✅ If articles should be visible to writer & manager
 router.get('/viewArticleList', Authentication, checkRole('admin', 'writer', 'manager'), viewArticleList);
 router.put('/updateArticle/:id', Authentication, checkRole('admin', 'writer', 'manager'), updateArticle);
-router.delete('/deleteArticle/:id', Authentication, checkRole('admin'), deleteArticle);
+router.delete('/deleteArticle/:id', Authentication, checkRole('admin', 'manager'), deleteArticle);
 
 
 // 📊 Dashboard Route
