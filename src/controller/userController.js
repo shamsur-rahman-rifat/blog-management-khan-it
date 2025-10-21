@@ -19,7 +19,7 @@ export const login = async (req, res) => {
     const user = await userModel.find(reqBody);
     if (user.length > 0) {
       const PayLoad = {
-        exp: Math.floor(Date.now() / 1000) + 24 * 60 * 60,
+        exp: Math.floor(Date.now() / 1000) + 24 * 60 * 60 * 7,
         data: reqBody.email,
       };
       const token = jwt.sign(PayLoad, 'secret123');
