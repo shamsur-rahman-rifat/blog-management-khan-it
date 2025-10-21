@@ -103,6 +103,7 @@ export const deleteTopic = async (req, res) => {
     const { id } = req.params;
     const createdBy = req.headers['email'];
     await topicModel.deleteOne({ _id: id, createdBy });
+    await Article.deleteOne({ topic: id });
     res.json({ status: 'Success', message: 'Topic Deleted' });
   } catch (error) {
     res.json({ status: 'Failed', message: error });
