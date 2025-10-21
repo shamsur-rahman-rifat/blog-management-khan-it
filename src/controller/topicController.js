@@ -102,25 +102,9 @@ export const deleteTopic = async (req, res) => {
   try {
     const { id } = req.params;
     const createdBy = req.headers['email'];
-
-    // First, delete the topic
-    const topicDeletionResult = await topicModel.deleteOne({ _id: id, createdBy });
-
-    if (topicDeletionResult.deletedCount === 0) {
-      return res.status(404).json({ status: 'Failed', message: 'Topic not found or unauthorized' });
-    }
-
-    // Then, delete the associated article (if any)
-    const articleDeletionResult = await Article.deleteOne({ topic: id });
-
-    // You can optionally check if the article was found and deleted
-    if (articleDeletionResult.deletedCount === 0) {
-      console.warn(`No article found for topic ID ${id}, but topic was deleted.`);
-    }
-
-    res.json({ status: 'Success', message: 'Topic and associated Article deleted' });
+    await topicModel.deleteOne({ _id: id, createdBy });
+    res.json({ status: 'Success', message: 'Topic Deleted' });
   } catch (error) {
-    console.error(error);
-    res.status(500).json({ status: 'Failed', message: error.message || error });
+    res.json({ status: 'Failed', message: error });
   }
 };
