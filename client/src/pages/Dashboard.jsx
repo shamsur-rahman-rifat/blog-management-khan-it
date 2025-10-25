@@ -11,7 +11,7 @@ export default function Dashboard() {
   const isWriter = user?.roles?.includes('writer');
 
   const [data, setData] = useState([]);
-  const [projectsAssignedCount, setProjectsAssignedCount] = useState(0); // Manager only field
+  const [projectsAssignedCount, setProjectsAssignedCount] = useState(0);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
 
@@ -54,12 +54,7 @@ export default function Dashboard() {
       const assignedDate = item.writerAssignedAt && new Date(item.writerAssignedAt);
       const submittedDate = item.writerSubmittedAt && new Date(item.writerSubmittedAt);
       const publishedDate = item.publishedAt && new Date(item.publishedAt);
-
-      const isThisMonthAssigned =
-        assignedDate &&
-        assignedDate.getMonth() === thisMonth &&
-        assignedDate.getFullYear() === thisYear;
-
+      const isThisMonthAssigned = assignedDate && assignedDate.getMonth() === thisMonth && assignedDate.getFullYear() === thisYear;
       const isPrivate = item.projectType === 'Private';
       const isPublic = item.projectType === 'Public';
 
@@ -68,21 +63,17 @@ export default function Dashboard() {
         if (isPrivate) stats.privateAssigned++;
         if (isPublic) stats.publicAssigned++;
       }
-
       if (submittedDate) {
         stats.received++;
         if (isPrivate) stats.privateReceived++;
         if (isPublic) stats.publicReceived++;
       }
-
       if (publishedDate) {
         stats.published++;
       }
-
       if (assignedDate && !submittedDate && !publishedDate) {
         stats.dueContent++;
       }
-
       if (submittedDate && !publishedDate) {
         stats.receivedNotPublished++;
       }
@@ -94,73 +85,74 @@ export default function Dashboard() {
   // Writer stats function
   function getWriterStats(data, writerEmail) {
     const writerData = data.filter(item =>
-      item.writerName === writerEmail ||
-      item.writerName === user?.name ||
-      item.writerEmail === writerEmail
+      item.writerName === writerEmail || item.writerName === user?.name || item.writerEmail === writerEmail
     );
-
     return {
       totalAssigned: writerData.length,
       submitted: writerData.filter(item => item.writerSubmittedAt).length,
-      dueContent: writerData.filter(item =>
-        item.writerAssignedAt && !item.writerSubmittedAt
-      ).length,
-      forRevision: writerData.filter(item =>
-        item.writerSubmittedAt && item.status === 'revision'
-      ).length
+      dueContent: writerData.filter(item => item.writerAssignedAt && !item.writerSubmittedAt).length,
+      forRevision: writerData.filter(item => item.writerSubmittedAt && item.status === 'revision').length
     };
   }
 
   // Manager stats function
   function getManagerStats(data, managerEmail) {
     const managerData = data.filter(item =>
-      item.managerName === managerEmail ||
-      item.managerName === user?.name ||
-      item.managerEmail === managerEmail
+      item.managerName === managerEmail || item.managerName === user?.name || item.managerEmail === managerEmail
     );
-
     const projects = [...new Set(managerData.map(item => item.project))];
-
     return {
-      projectsAssigned: projectsAssignedCount || projects.length, // Use API field if available
+      projectsAssigned: projectsAssignedCount || projects.length,
       totalContentAssigned: managerData.length,
       contentReceived: managerData.filter(item => item.writerSubmittedAt).length,
-      dueContent: managerData.filter(item =>
-        item.writerAssignedAt && !item.writerSubmittedAt
-      ).length
+      dueContent: managerData.filter(item => item.writerAssignedAt && !item.writerSubmittedAt).length
     };
   }
 
   // Filter data based on role
   function getFilteredData() {
     if (isAdmin) {
-      return data; // Admin sees all data
+      return data;
     } else if (isManager && !isWriter) {
-      // Manager only - filter by manager
       return data.filter(item =>
-        item.managerName === user?.email ||
-        item.managerName === user?.name ||
-        item.managerEmail === user?.email
+        item.managerName === user?.email || item.managerName === user?.name || item.managerEmail === user?.email
       );
     } else if (isWriter && !isManager) {
-      // Writer only - filter by writer
       return data.filter(item =>
-        item.writerName === user?.email ||
-        item.writerName === user?.name ||
-        item.writerEmail === user?.email
+        item.writerName === user?.email || item.writerName === user?.name || item.writerEmail === user?.email
       );
     } else if (isManager && isWriter) {
-      // Both manager and writer - show both
       return data.filter(item =>
-        item.managerName === user?.email ||
-        item.managerName === user?.name ||
-        item.managerEmail === user?.email ||
-        item.writerName === user?.email ||
-        item.writerName === user?.name ||
-        item.writerEmail === user?.email
+        item.managerName === user?.email || item.managerName === user?.name || item.managerEmail === user?.email ||
+        item.writerName === user?.email || item.writerName === user?.name || item.writerEmail === user?.email
       );
     }
     return [];
+  }
+
+  // Get link for each card based on label
+  function getCardLink(label) {
+    const linkMap = {
+      // Admin Overview
+      'Assigned This Month': 'https://khanit.xyz/articles',
+      'Private Content Assigned': 'https://khanit.xyz/articles',
+      'Public Content Assigned': 'https://khanit.xyz/articles',
+      'Content Received': 'https://khanit.xyz/articles',
+      'Private Received': 'https://khanit.xyz/articles',
+      'Public Received': 'https://khanit.xyz/articles',
+      'Content Published': 'https://khanit.xyz/articles',
+      'Due Content': 'https://khanit.xyz/articles',
+      'Received Not Published': 'https://khanit.xyz/articles',
+      // Manager Overview
+      'Projects Assigned': 'https://khanit.xyz/projects',
+      'Total Content Assigned': 'https://khanit.xyz/topics',
+      'Content Received': 'https://khanit.xyz/articles',
+      // Writer Overview
+      'Total Content Assigned': 'https://khanit.xyz/topics',
+      'Content Submitted': 'https://khanit.xyz/articles',
+      'Content for Revision': 'https://khanit.xyz/articles'
+    };
+    return linkMap[label] || '#';
   }
 
   // Generate stats sections based on user roles
@@ -261,7 +253,6 @@ export default function Dashboard() {
       "Writing Complete": formatDateWithDiff(item.writerSubmittedAt, item.writerAssignedAt),
       "Content Published": formatDateWithDiff(item.publishedAt, item.writerSubmittedAt)
     }));
-
     const worksheet = XLSX.utils.json_to_sheet(formattedData);
     const workbook = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(workbook, worksheet, "Dashboard");
@@ -271,26 +262,20 @@ export default function Dashboard() {
   // Generate dashboard title based on roles
   function getDashboardTitle() {
     const roleCount = [isAdmin, isManager, isWriter].filter(Boolean).length;
-
-    // Get current month (1-12) and map it to a month name
     const now = new Date();
     const monthNames = [
       "January", "February", "March", "April", "May", "June",
       "July", "August", "September", "October", "November", "December"
     ];
-    const currentMonth = monthNames[now.getMonth()]; // Get the current month name
-
-    // Get the last two digits of the current year (e.g., 25 for 2025)
+    const currentMonth = monthNames[now.getMonth()];
     const currentYear = now.getFullYear().toString().slice(-2);
-
-    const formattedMonthYear = `${currentMonth.slice(0, 3)}-${currentYear}`; // Format as "Sep-25"
+    const formattedMonthYear = `${currentMonth.slice(0, 3)}-${currentYear}`;
 
     if (roleCount === 1) {
       if (isAdmin) return `📊 Admin Timeline Dashboard - ${formattedMonthYear}`;
       if (isManager) return `👨‍💼 Manager Timeline Dashboard - ${formattedMonthYear}`;
       if (isWriter) return `📝 Writer Timeline Dashboard - ${formattedMonthYear}`;
     }
-
     return `📊 Timeline Dashboard - ${formattedMonthYear}`;
   }
 
@@ -325,12 +310,27 @@ export default function Dashboard() {
                 key={idx}
                 className={`col-12 col-sm-6 ${section.stats.length <= 4 ? 'col-md-6 col-lg-3' : 'col-md-4'}`}
               >
-                <div className="card shadow-sm border-0 h-100 text-center">
-                  <div className="card-body py-3">
-                    <h6 className="text-muted small mb-1">{item.label}</h6>
-                    <h4 className={`fw-bold text-${item.color} mb-0`}>{item.value}</h4>
+                <a
+                  href={getCardLink(item.label)}
+                  className="text-decoration-none"
+                  style={{ display: 'block' }}
+                >
+                  <div className="card shadow-sm border-0 h-100 text-center" style={{ transition: 'transform 0.2s, box-shadow 0.2s', cursor: 'pointer' }}
+                    onMouseEnter={(e) => {
+                      e.currentTarget.style.transform = 'translateY(-4px)';
+                      e.currentTarget.style.boxShadow = '0 4px 12px rgba(0,0,0,0.15)';
+                    }}
+                    onMouseLeave={(e) => {
+                      e.currentTarget.style.transform = 'translateY(0)';
+                      e.currentTarget.style.boxShadow = '';
+                    }}
+                  >
+                    <div className="card-body py-3">
+                      <h6 className="text-muted small mb-1">{item.label}</h6>
+                      <h4 className={`fw-bold text-${item.color} mb-0`}>{item.value}</h4>
+                    </div>
                   </div>
-                </div>
+                </a>
               </div>
             ))}
           </div>
@@ -347,7 +347,10 @@ export default function Dashboard() {
         >
           ⬇️ CSV
         </CSVLink>
-        <button onClick={exportToExcel} className="btn btn-outline-primary d-flex align-items-center gap-1">
+        <button
+          onClick={exportToExcel}
+          className="btn btn-outline-primary d-flex align-items-center gap-1"
+        >
           ⬇️ Excel
         </button>
       </div>
