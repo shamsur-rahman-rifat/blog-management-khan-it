@@ -1,10 +1,12 @@
 import React, { useContext, useEffect, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import api from '../api';
 import { AuthContext } from '../auth/AuthContext';
 import { CSVLink } from 'react-csv';
 import * as XLSX from 'xlsx';
 
 export default function Dashboard() {
+  const navigate = useNavigate();
   const { user } = useContext(AuthContext);
   const isAdmin = user?.roles?.includes('admin');
   const isManager = user?.roles?.includes('manager');
@@ -134,26 +136,32 @@ export default function Dashboard() {
   function getCardLink(label) {
     const linkMap = {
       // Admin Overview
-      'Assigned This Month': 'https://khanit.xyz/articles',
-      'Private Content Assigned': 'https://khanit.xyz/articles',
-      'Public Content Assigned': 'https://khanit.xyz/articles',
-      'Content Received': 'https://khanit.xyz/articles',
-      'Private Received': 'https://khanit.xyz/articles',
-      'Public Received': 'https://khanit.xyz/articles',
-      'Content Published': 'https://khanit.xyz/articles',
-      'Due Content': 'https://khanit.xyz/articles',
-      'Received Not Published': 'https://khanit.xyz/articles',
+      'Assigned This Month': '/articles',
+      'Private Content Assigned': '/articles',
+      'Public Content Assigned': '/articles',
+      'Content Received': '/articles',
+      'Private Received': '/articles',
+      'Public Received': '/articles',
+      'Content Published': '/articles',
+      'Due Content': '/articles',
+      'Received Not Published': '/articles',
       // Manager Overview
-      'Projects Assigned': 'https://khanit.xyz/projects',
-      'Total Content Assigned': 'https://khanit.xyz/topics',
-      'Content Received': 'https://khanit.xyz/articles',
+      'Projects Assigned': '/projects',
+      'Total Content Assigned': '/topics',
+      'Content Received': '/articles',
       // Writer Overview
-      'Total Content Assigned': 'https://khanit.xyz/topics',
-      'Content Submitted': 'https://khanit.xyz/articles',
-      'Content for Revision': 'https://khanit.xyz/articles'
+      'Total Content Assigned': '/topics',
+      'Content Submitted': '/articles',
+      'Content for Revision': '/articles'
     };
-    return linkMap[label] || '#';
+    return linkMap[label] || '/articles';
   }
+
+  // Handle card click navigation
+  const handleCardClick = (label) => {
+    const path = getCardLink(label);
+    navigate(path);
+  };
 
   // Generate stats sections based on user roles
   function generateStatsConfig() {
@@ -310,27 +318,27 @@ export default function Dashboard() {
                 key={idx}
                 className={`col-12 col-sm-6 ${section.stats.length <= 4 ? 'col-md-6 col-lg-3' : 'col-md-4'}`}
               >
-                <a
-                  href={getCardLink(item.label)}
-                  className="text-decoration-none"
-                  style={{ display: 'block' }}
+                <div
+                  onClick={() => handleCardClick(item.label)}
+                  className="card shadow-sm border-0 h-100 text-center"
+                  style={{
+                    transition: 'transform 0.2s, box-shadow 0.2s',
+                    cursor: 'pointer'
+                  }}
+                  onMouseEnter={(e) => {
+                    e.currentTarget.style.transform = 'translateY(-4px)';
+                    e.currentTarget.style.boxShadow = '0 4px 12px rgba(0,0,0,0.15)';
+                  }}
+                  onMouseLeave={(e) => {
+                    e.currentTarget.style.transform = 'translateY(0)';
+                    e.currentTarget.style.boxShadow = '';
+                  }}
                 >
-                  <div className="card shadow-sm border-0 h-100 text-center" style={{ transition: 'transform 0.2s, box-shadow 0.2s', cursor: 'pointer' }}
-                    onMouseEnter={(e) => {
-                      e.currentTarget.style.transform = 'translateY(-4px)';
-                      e.currentTarget.style.boxShadow = '0 4px 12px rgba(0,0,0,0.15)';
-                    }}
-                    onMouseLeave={(e) => {
-                      e.currentTarget.style.transform = 'translateY(0)';
-                      e.currentTarget.style.boxShadow = '';
-                    }}
-                  >
-                    <div className="card-body py-3">
-                      <h6 className="text-muted small mb-1">{item.label}</h6>
-                      <h4 className={`fw-bold text-${item.color} mb-0`}>{item.value}</h4>
-                    </div>
+                  <div className="card-body py-3">
+                    <h6 className="text-muted small mb-1">{item.label}</h6>
+                    <h4 className={`fw-bold text-${item.color} mb-0`}>{item.value}</h4>
                   </div>
-                </a>
+                </div>
               </div>
             ))}
           </div>
