@@ -15,6 +15,37 @@ export const viewArticleList = async (req, res) => {
   }
 };
 
+export const viewPublishedArticles = async (req, res) => {
+  try {
+    const publishedArticles = await articleModel.find({ status: 'published' })
+      .populate({
+        path: 'topic',
+        select: 'title project',
+        populate: {
+          path: 'project',
+          select: 'name',
+        }
+      })
+      .select('publishLink publishedAt topic')
+      .sort({ publishedAt: -1 });
+
+    // Format data for API output
+    const formattedData = publishedArticles.map(article => ({
+      projectName: article.topic?.project?.name || 'N/A',
+      topicTitle: article.topic?.title || 'N/A',
+      publishLink: article.publishLink,
+      publishedAt: article.publishedAt
+        ? article.publishedAt.toISOString().split('T')[0]
+        : 'N/A',
+    }));
+
+    res.json({ status: 'Success', data: formattedData });
+  } catch (error) {
+    console.error('Error fetching published articles:', error);
+    res.status(500).json({ status: 'Failed', message: error.message });
+  }
+};
+
 export const updateArticle = async (req, res) => {
   try {
     const { id } = req.params;
