@@ -31,6 +31,7 @@ export const viewPublishedArticles = async (req, res) => {
 
     // Format data for API output
     const formattedData = publishedArticles.map(article => ({
+      id: article.id,
       projectName: article.topic?.project?.name || 'N/A',
       topicTitle: article.topic?.title || 'N/A',
       publishLink: article.publishLink,
