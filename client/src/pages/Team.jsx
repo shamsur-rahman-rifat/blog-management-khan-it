@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useContext } from 'react';
+import React, { useEffect, useState, useContext, useRef } from 'react';
 import api from '../api';
 import { AuthContext } from '../auth/AuthContext';
 import { useForm } from 'react-hook-form';
@@ -11,6 +11,7 @@ export default function Team() {
   const [users, setUsers] = useState([]);
   const [editingUserId, setEditingUserId] = useState(null);
   const [loading, setLoading] = useState(true);
+  const formRef = useRef(null);
   const [formMode, setFormMode] = useState(null); // 'add' | 'edit'
 
   const {
@@ -51,6 +52,11 @@ export default function Team() {
     setValue('name', u.name);
     setValue('email', u.email);
     ROLES.forEach((role) => setValue(role, u.roles?.includes(role)));
+
+    // ✅ Scroll smoothly to the form
+    setTimeout(() => {
+      formRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }, 100);
   };
 
   const cancelForm = () => {
@@ -79,17 +85,20 @@ export default function Team() {
         alert('Failed to add user');
       }
     } else if (formMode === 'edit') {
-      try {
-        await api.put(`/profileUpdate/${editingUserId}`, payload);
-        alert('User updated');
-        fetchUsers();
-        cancelForm();
-      } catch (err) {
-        console.error(err);
-        alert('Failed to update user');
+    try {
+      if (formData.password) {
+        payload.password = formData.password; // ✅ Include password only if entered
       }
+      await api.put(`/profileUpdate/${editingUserId}`, payload);
+      alert('User updated');
+      fetchUsers();
+      cancelForm();
+    } catch (err) {
+      console.error(err);
+      alert('Failed to update user');
     }
-  };
+      }
+    };
 
   const onDelete = async (id) => {
     if (!window.confirm('Delete this user?')) return;
@@ -128,7 +137,7 @@ export default function Team() {
       </div>
 
       {(formMode === 'add' || formMode === 'edit') && (
-        <div className="card mb-4 p-4 shadow-sm">
+        <div className="card mb-4 p-4 shadow-sm" ref={formRef}>
           <h5 className="mb-3">
             {formMode === 'add' ? '➕ Add New Team Member' : '✏️ Edit User'}
           </h5>
@@ -160,13 +169,19 @@ export default function Team() {
                   <small className="text-danger">{errors.email.message}</small>
                 )}
               </div>
-              {formMode === 'add' && (
+              {(formMode === 'add' || formMode === 'edit') && (
                 <div className="col-md-4">
                   <input
-                    {...register('password', { required: 'Password is required' })}
+                    {...register('password', {
+                      required: formMode === 'add' ? 'Password is required' : false,
+                    })}
                     type="password"
                     className="form-control"
-                    placeholder="Password"
+                    placeholder={
+                      formMode === 'add'
+                        ? 'Password'
+                        : 'New Password (leave blank to keep unchanged)'
+                    }
                   />
                   {errors.password && (
                     <small className="text-danger">{errors.password.message}</small>
