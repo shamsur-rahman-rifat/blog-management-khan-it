@@ -68,7 +68,7 @@ export const updateArticle = async (req, res) => {
     const isAdmin = user.roles.includes("admin");
 
     // ✅ Writer or admin can update content link
-    if ((isWriter || isAdmin) && updateData.contentLink) {
+    if ((isWriter || isAdmin || isManager) && updateData.contentLink) {
       if (!isAdmin && article.status === "published") {
         return res.status(400).json({ status: "Failed", message: "Cannot update a published article." });
       }
