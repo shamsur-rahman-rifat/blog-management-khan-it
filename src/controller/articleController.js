@@ -78,12 +78,17 @@ export const updateArticle = async (req, res) => {
       article.writerSubmittedAt = article.writerSubmittedAt || new Date();
     }
 
-    // ✅ Manager or admin can update publish link
+    // Manager or admin can update publish link
     if ((isManager || isAdmin) && updateData.publishLink) {
-      if (!isAdmin && article.status !== "submitted") {
-        return res.status(400).json({ status: "Failed", message: "Only submitted articles can be published." });
+
+      // If contentLink is missing, auto-assign publishLink into contentLink
+      if (!article.contentLink) {
+        article.contentLink = updateData.publishLink;
+        article.writerSubmittedAt = article.writerSubmittedAt || new Date();
+        article.status = "submitted"; // Move it to submitted first (optional)
       }
 
+      // Now publish it
       article.publishLink = updateData.publishLink;
       article.status = "published";
       article.publisher = article.publisher || userEmail;
