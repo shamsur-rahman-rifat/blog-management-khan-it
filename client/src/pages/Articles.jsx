@@ -510,11 +510,11 @@ export default function Articles() {
                         <th className="fw-semibold">Project</th>
                         <th className="fw-semibold d-none d-md-table-cell">Month</th>
                         <th className="fw-semibold">Status</th>
+                        <th className="fw-semibold d-none d-md-table-cell">Updated</th>
                         <th className="fw-semibold d-none d-lg-table-cell">Writer</th>
                         <th className="fw-semibold d-none d-lg-table-cell">Manager</th>
                         <th className="fw-semibold text-center">Content</th>
                         <th className="fw-semibold text-center">Publish</th>
-                        <th className="fw-semibold d-none d-md-table-cell">Updated</th>
                         <th className="fw-semibold text-center">Actions</th>
                       </tr>
                     </thead>
@@ -546,6 +546,9 @@ export default function Articles() {
                                 {getStatusIcon(article.status)} {article.status || "draft"}
                               </span>
                             </td>
+                            <td className="d-none d-md-table-cell">
+                              <small className="text-muted">{formatDate(article.updatedAt)}</small>
+                            </td>                            
                             <td className="d-none d-lg-table-cell">
                               <small>{getUserName(article.topic?.project?.writer)}</small>
                             </td>
@@ -597,9 +600,6 @@ export default function Articles() {
                               ) : (
                                 <span className="text-muted small">—</span>
                               )}
-                            </td>
-                            <td className="d-none d-md-table-cell">
-                              <small className="text-muted">{formatDate(article.updatedAt)}</small>
                             </td>
                             <td>
                               {isEditing ? (
