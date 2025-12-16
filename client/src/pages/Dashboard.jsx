@@ -148,9 +148,7 @@ export default function Dashboard() {
       // Manager Overview
       'Projects Assigned': '/projects',
       'Total Content Assigned': '/topics',
-      'Content Received': '/articles',
       // Writer Overview
-      'Total Content Assigned': '/topics',
       'Content Submitted': '/articles',
       'Content for Revision': '/articles'
     };
@@ -384,8 +382,8 @@ export default function Dashboard() {
                 <th>Topic</th>
                 <th>Month</th>
                 <th>Manager</th>
-                <th>Writer</th>
                 <th>Writer Assigned</th>
+                <th>Writer</th>
                 <th>Writing Complete</th>
                 <th>Content Published</th>
               </tr>
@@ -402,8 +400,8 @@ export default function Dashboard() {
                     <td>{item.topic}</td>
                     <td>{item.month}</td>
                     <td>{item.managerName}</td>
-                    <td>{item.writerName}</td>
                     <td>{formatReadableDate(item.writerAssignedAt)}</td>
+                    <td>{item.writerName}</td>
                     <td>{formatDateWithDiff(item.writerSubmittedAt, item.writerAssignedAt)}</td>
                     <td>{formatDateWithDiff(item.publishedAt, item.writerSubmittedAt)}</td>
                   </tr>
