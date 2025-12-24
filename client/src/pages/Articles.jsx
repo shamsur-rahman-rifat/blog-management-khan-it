@@ -4,6 +4,31 @@ import { AuthContext } from "../auth/AuthContext";
 import * as XLSX from "xlsx";
 import { CSVLink } from "react-csv";
 
+const CLOUD_NAME = "dmfptu1yj";
+const UPLOAD_PRESET = "article_content";
+
+const uploadToCloudinary = async (file) => {
+  const formData = new FormData();
+  formData.append("file", file);
+  formData.append("upload_preset", UPLOAD_PRESET);
+  formData.append("resource_type", "raw");
+
+  const res = await fetch(
+    `https://api.cloudinary.com/v1_1/${CLOUD_NAME}/raw/upload`,
+    {
+      method: "POST",
+      body: formData,
+    }
+  );
+
+  if (!res.ok) {
+    throw new Error("Cloudinary upload failed");
+  }
+
+  const data = await res.json();
+  return data.secure_url;
+};
+
 export default function Articles() {
   const { user } = useContext(AuthContext);
   const [articles, setArticles] = useState([]);
@@ -13,6 +38,28 @@ export default function Articles() {
   const [editData, setEditData] = useState({});
   const [revisionModal, setRevisionModal] = useState({ show: false, articleId: null, topicId: null, instructions: "" });
   const [showFilters, setShowFilters] = useState(false);
+  const [uploadingArticleId, setUploadingArticleId] = useState(null);
+
+  const handleContentUpload = async (articleId, file) => {
+    if (!file) return;
+
+    if (editData.contentLink) {
+      const confirmReplace = window.confirm(
+        "This will replace the existing content file. Continue?"
+      );
+      if (!confirmReplace) return;
+    }
+
+    try {
+      setUploadingArticleId(articleId);
+      const url = await uploadToCloudinary(file);
+      setEditData(prev => ({ ...prev, contentLink: url }));
+    } catch (error) {
+      alert("Upload failed. Please try again.");
+    } finally {
+      setUploadingArticleId(null);
+    }
+  };
 
   // Filter states
   const [searchTitle, setSearchTitle] = useState("");
@@ -557,14 +604,32 @@ export default function Articles() {
                             </td>
                             <td className="text-center">
                               {isEditing && canEditContent ? (
-                                <input
-                                  type="url"
-                                  className="form-control form-control-sm"
-                                  placeholder="https://..."
-                                  value={editData.contentLink}
-                                  onChange={(e) => handleEditChange("contentLink", e.target.value)}
-                                  style={{ minWidth: "180px" }}
-                                />
+                                <div className="d-flex flex-column gap-1" style={{ minWidth: "200px" }}>
+                                  <input
+                                    type="file"
+                                    accept=".pdf,.doc,.docx,.md,.txt"
+                                    className="form-control form-control-sm"
+                                    onChange={(e) =>
+                                      handleContentUpload(article._id, e.target.files[0])
+                                    }
+                                    disabled={uploadingArticleId === article._id}
+                                  />
+
+                                  {uploadingArticleId === article._id && (
+                                    <small className="text-muted">Uploading...</small>
+                                  )}
+
+                                  {editData.contentLink && (
+                                    <a
+                                      href={editData.contentLink}
+                                      target="_blank"
+                                      rel="noreferrer"
+                                      className="small text-primary"
+                                    >
+                                      Preview uploaded file
+                                    </a>
+                                  )}
+                                </div>
                               ) : article.contentLink ? (
                                 <a 
                                   href={article.contentLink} 
@@ -607,7 +672,10 @@ export default function Articles() {
                                   <button
                                     className="btn btn-success btn-sm"
                                     onClick={() => saveChanges(article._id)}
-                                    disabled={canEditContent && !editData.contentLink}
+                                    disabled={
+                                      (canEditContent && !editData.contentLink) ||
+                                      uploadingArticleId === article._id                                      
+                                    }
                                     title="Save changes"
                                   >
                                     💾
