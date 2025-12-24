@@ -16,7 +16,20 @@ const __dirname = resolve();
 // Middleware
 
 app.use(cors());
-app.use(helmet());
+app.use(
+  helmet({
+    contentSecurityPolicy: {
+      directives: {
+        defaultSrc: ["'self'"],
+        connectSrc: ["'self'", "https://api.cloudinary.com"],
+        scriptSrc: ["'self'", "https://widget.cloudinary.com"], // if using Cloudinary widget
+        imgSrc: ["'self'", "https://res.cloudinary.com"], // images from Cloudinary
+        styleSrc: ["'self'", "'unsafe-inline'"], // if inline styles are used
+        objectSrc: ["'none'"],
+      },
+    },
+  })
+);
 app.use(hpp());
 app.use(json({ limit: "20MB" }));
 app.use(urlencoded({extended: true}));
