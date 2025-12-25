@@ -519,7 +519,7 @@ export default function ManagerTopics() {
                 <tbody>
                   {filteredTopics.map(topic => {
                     const writerName = users.find(u => u._id === topic.project?.writer)?.name || '—';
-                    const canEdit = isManager && topic.createdBy === user.email;
+                    const canEdit = isManager;
                     const updatedDate = topic.updatedAt
                       ? new Date(topic.updatedAt).toLocaleDateString('en-GB', {
                           day: '2-digit',

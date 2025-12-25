@@ -592,7 +592,8 @@ export default function Articles() {
                             </td>
                             <td className="text-center">
                               {isEditing && canEditContent ? (
-                                <div className="d-flex flex-column gap-1" style={{ minWidth: "200px" }}>
+                                <div className="d-flex flex-column gap-2" style={{ minWidth: "220px" }}>
+                                  {/* Upload option */}
                                   <input
                                     type="file"
                                     accept=".pdf,.doc,.docx,.md,.txt"
@@ -601,6 +602,17 @@ export default function Articles() {
                                       handleContentUpload(article._id, e.target.files[0])
                                     }
                                     disabled={uploadingArticleId === article._id}
+                                  />
+
+                                  <div className="text-center text-muted small">— OR —</div>
+
+                                  {/* Link option */}
+                                  <input
+                                    type="url"
+                                    className="form-control form-control-sm"
+                                    placeholder="Content link (Doc, Drive, etc.)"
+                                    value={editData.contentLink || ""}
+                                    onChange={(e) => handleEditChange("contentLink", e.target.value)}
                                   />
 
                                   {uploadingArticleId === article._id && (
@@ -614,7 +626,7 @@ export default function Articles() {
                                       rel="noreferrer"
                                       className="small text-primary"
                                     >
-                                      Preview uploaded file
+                                      Preview content
                                     </a>
                                   )}
                                 </div>
