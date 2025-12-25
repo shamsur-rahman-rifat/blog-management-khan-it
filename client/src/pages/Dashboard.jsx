@@ -2,8 +2,6 @@ import React, { useContext, useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import api from '../api';
 import { AuthContext } from '../auth/AuthContext';
-import { CSVLink } from 'react-csv';
-import * as XLSX from 'xlsx';
 
 export default function Dashboard() {
   const navigate = useNavigate();
@@ -13,6 +11,8 @@ export default function Dashboard() {
   const isWriter = user?.roles?.includes('writer');
 
   const [data, setData] = useState([]);
+  const [projects, setProjects] = useState([]);
+  const [users, setUsers] = useState([]);
   const [projectsAssignedCount, setProjectsAssignedCount] = useState(0);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
@@ -32,6 +32,54 @@ export default function Dashboard() {
     const diffTime = currentDate - previousDate;
     const diffDays = Math.round(diffTime / (1000 * 60 * 60 * 24));
     return `${formattedDate} (${diffDays + 1}d)`;
+  }
+
+  // Filter data for current month only
+  function filterCurrentMonthData(data) {
+    const now = new Date();
+    const thisMonth = now.getMonth();
+    const thisYear = now.getFullYear();
+
+    return data.filter(item => {
+      const assignedDate = item.writerAssignedAt && new Date(item.writerAssignedAt);
+      return assignedDate && 
+             assignedDate.getMonth() === thisMonth && 
+             assignedDate.getFullYear() === thisYear;
+    });
+  }
+
+  // Get projects with no assignments this month
+  function getProjectsWithNoAssignments() {
+    const now = new Date();
+    const thisMonth = now.getMonth();
+    const thisYear = now.getFullYear();
+
+    // Get ongoing projects
+    const ongoingProjects = projects.filter(p => p.status !== 'paused');
+
+    // Get project names that have assignments this month
+    const projectsWithAssignments = new Set(
+      data
+        .filter(item => {
+          const assignedDate = item.writerAssignedAt && new Date(item.writerAssignedAt);
+          return assignedDate && 
+                 assignedDate.getMonth() === thisMonth && 
+                 assignedDate.getFullYear() === thisYear;
+        })
+        .map(item => item.project)
+    );
+
+    // Filter ongoing projects without assignments
+    return ongoingProjects
+      .filter(p => !projectsWithAssignments.has(p.name))
+      .map(p => {
+        const managerUser = users.find(u => u._id === (p.manager?._id || p.manager));
+        return {
+          projectName: p.name,
+          managerName: managerUser ? managerUser.name : '—',
+          projectType: p.private ? 'Private' : 'Public'
+        };
+      });
   }
 
   // Admin stats function
@@ -219,10 +267,20 @@ export default function Dashboard() {
     const fetchDashboardData = async () => {
       if (!isAdmin && !isManager && !isWriter) return;
       try {
-        const res = await api.get('/getDashboardData');
-        setData(res.data?.data || []);
-        if (isManager && res.data?.projectsAssignedCount) {
-          setProjectsAssignedCount(res.data.projectsAssignedCount);
+        const [dashboardRes, projectsRes, usersRes] = await Promise.all([
+          api.get('/getDashboardData'),
+          api.get('/viewProjectList'),
+          api.get('/viewUserList')
+        ]);
+
+        const allData = dashboardRes.data?.data || [];
+        const currentMonthData = filterCurrentMonthData(allData);
+        setData(currentMonthData);
+        setProjects(projectsRes.data?.data || []);
+        setUsers(usersRes.data?.data || []);
+
+        if (isManager && dashboardRes.data?.projectsAssignedCount) {
+          setProjectsAssignedCount(dashboardRes.data.projectsAssignedCount);
         }
       } catch (err) {
         console.error(err);
@@ -236,34 +294,7 @@ export default function Dashboard() {
 
   const filteredData = getFilteredData();
   const statsConfig = generateStatsConfig();
-
-  const csvHeaders = [
-    { label: "Project", key: "project" },
-    { label: "Project Manager", key: "managerName" },
-    { label: "Project Writer", key: "writerName" },
-    { label: "Topic", key: "topic" },
-    { label: "Month", key: "month" },
-    { label: "Writer Assigned", key: "writerAssignedAt" },
-    { label: "Writing Complete", key: "writerSubmittedAt" },
-    { label: "Content Published", key: "publishedAt" }
-  ];
-
-  const exportToExcel = () => {
-    const formattedData = filteredData.map(item => ({
-      Project: item.project,
-      "Project Manager": item.managerName,
-      "Project Writer": item.writerName,
-      Topic: item.topic,
-      Month: item.month,
-      "Writer Assigned": formatDateWithDiff(item.writerAssignedAt),
-      "Writing Complete": formatDateWithDiff(item.writerSubmittedAt, item.writerAssignedAt),
-      "Content Published": formatDateWithDiff(item.publishedAt, item.writerSubmittedAt)
-    }));
-    const worksheet = XLSX.utils.json_to_sheet(formattedData);
-    const workbook = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(workbook, worksheet, "Dashboard");
-    XLSX.writeFile(workbook, "dashboard.xlsx");
-  };
+  const projectsWithNoAssignments = getProjectsWithNoAssignments();
 
   // Generate dashboard title based on roles
   function getDashboardTitle() {
@@ -343,23 +374,43 @@ export default function Dashboard() {
         </div>
       ))}
 
-      {/* Export Buttons */}
-      <div className="d-flex flex-wrap gap-2 mb-4 justify-content-center justify-content-md-end">
-        <CSVLink
-          data={filteredData}
-          headers={csvHeaders}
-          filename="dashboard.csv"
-          className="btn btn-outline-success d-flex align-items-center gap-1"
-        >
-          ⬇️ CSV
-        </CSVLink>
-        <button
-          onClick={exportToExcel}
-          className="btn btn-outline-primary d-flex align-items-center gap-1"
-        >
-          ⬇️ Excel
-        </button>
-      </div>
+      {/* Projects with No Assignments Section - Only for Admin */}
+      {isAdmin && projectsWithNoAssignments.length > 0 && (
+        <div className="mb-5">
+          <div className="d-flex align-items-center mb-3">
+            <h5 className="mb-0 me-3 text-danger">⚠️ Ongoing Projects Without Assignments This Month</h5>
+            <hr className="flex-grow-1 border-secondary" />
+          </div>
+          <div className="card shadow-sm border-danger">
+            <div className="card-body">
+              <div className="table-responsive">
+                <table className="table table-hover align-middle mb-0">
+                  <thead className="table-light">
+                    <tr>
+                      <th style={{ width: '50%' }}>Project Name</th>
+                      <th style={{ width: '35%' }}>Manager</th>
+                      <th style={{ width: '15%' }}>Type</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {projectsWithNoAssignments.map((project, idx) => (
+                      <tr key={idx}>
+                        <td className="fw-semibold">{project.projectName}</td>
+                        <td>{project.managerName}</td>
+                        <td>
+                          <span className={`badge ${project.projectType === 'Private' ? 'bg-info' : 'bg-secondary'}`}>
+                            {project.projectType}
+                          </span>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
 
       <hr className="mb-4" />
 
@@ -391,7 +442,7 @@ export default function Dashboard() {
             <tbody className="text-center">
               {filteredData.length === 0 ? (
                 <tr>
-                  <td colSpan="8" className="text-center text-muted py-4">No data available</td>
+                  <td colSpan="8" className="text-center text-muted py-4">No data available for current month</td>
                 </tr>
               ) : (
                 filteredData.map((item, index) => (

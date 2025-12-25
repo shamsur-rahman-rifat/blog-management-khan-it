@@ -1,6 +1,7 @@
 import React, { useContext, useState } from 'react';
 import { NavLink, useNavigate } from 'react-router-dom';
 import { AuthContext } from '../auth/AuthContext';
+import Report from './../pages/Report';
 
 export default function Navbar() {
   const { user, logout } = useContext(AuthContext);
@@ -72,6 +73,14 @@ export default function Navbar() {
               </NavLink>
             </li>
           )}
+
+          {user?.roles?.includes('admin') && (
+            <li className="nav-item">
+              <NavLink className={linkClass} to="/report" onClick={closeNavbar}>
+                Report
+              </NavLink>
+            </li>
+          )}          
 
         </ul>
 
