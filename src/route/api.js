@@ -27,7 +27,6 @@ import {
   viewArticleList,
   updateArticle,
   viewPublishedArticles,
-  deleteArticle
 } from '../controller/articleController.js';
 
 import { getDashboardData } from '../controller/dashboardController.js';
@@ -71,8 +70,6 @@ router.delete('/deleteTopic/:id', Authentication, checkRole('admin', 'manager'),
 router.get('/viewArticleList', Authentication, checkRole('admin', 'writer', 'manager'), viewArticleList);
 router.get('/viewPublishedArticles', Authentication, checkRole('admin'), viewPublishedArticles);
 router.put('/updateArticle/:id', Authentication, checkRole('admin', 'writer', 'manager'), updateArticle);
-router.delete('/deleteArticle/:id', Authentication, checkRole('admin', 'manager'), deleteArticle);
-
 
 // 📊 Dashboard Route
 

@@ -109,33 +109,3 @@ export const updateArticle = async (req, res) => {
     return res.status(500).json({ status: "Failed", message: "Internal server error" });
   }
 };
-
-export const deleteArticle = async (req, res) => {
-  try {
-    const { id } = req.params;
-    const userEmail = req.headers["email"];
-
-    const user = await userModel.findOne({ email: userEmail });
-    if (!user) {
-      return res.status(403).json({ status: "Failed", message: "User not found" });
-    }
-
-    const article = await articleModel.findById(id);
-    if (!article) {
-      return res.status(404).json({ status: "Failed", message: "Article not found" });
-    }
-
-    const isWriter = article.writer === userEmail;
-    const isAdmin = user.roles.includes("admin");
-
-    if (!isWriter && !isAdmin) {
-      return res.status(403).json({ status: "Failed", message: "Unauthorized" });
-    }
-
-    await article.deleteOne();
-    return res.json({ status: "Success", message: "Article Deleted" });
-  } catch (error) {
-    console.error("Delete error:", error);
-    return res.status(500).json({ status: "Failed", message: "Internal server error" });
-  }
-};

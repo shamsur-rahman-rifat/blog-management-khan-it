@@ -243,17 +243,6 @@ export default function Articles() {
     }
   };
 
-  const deleteArticle = async (articleId) => {
-    if (!window.confirm("Are you sure you want to delete this article?")) return;
-    try {
-      await api.delete(`/deleteArticle/${articleId}`);
-      loadData();
-    } catch (error) {
-      console.error("Error deleting:", error);
-      alert("Failed to delete article: " + error.message);
-    }
-  };
-
   // Combine role filtering + search + other filters
   const getFilteredArticles = () => {
     let arr = filterByRole(articles);
@@ -570,7 +559,6 @@ export default function Articles() {
                         const isEditing = editingId === article._id;
                         const canEditContent = (isWriter && article.topic?.project?.writer === user.id) || isAdmin;
                         const canEditPublish = (isManager && article.topic?.project?.manager === user.id) || isAdmin;
-                        const canDelete = isAdmin || (isManager && article.topic?.project?.manager === user.id);
                         const canRequestRevision = ((isManager && article.topic?.project?.manager === user.id) || isAdmin) && article.status === "submitted";
 
                         return (
@@ -706,15 +694,6 @@ export default function Articles() {
                                       title="Request revision"
                                     >
                                       🔄
-                                    </button>
-                                  )}
-                                  {canDelete && (
-                                    <button
-                                      className="btn btn-outline-danger btn-sm"
-                                      onClick={() => deleteArticle(article._id)}
-                                      title="Delete article"
-                                    >
-                                      🗑️
                                     </button>
                                   )}
                                 </div>
