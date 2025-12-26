@@ -53,11 +53,14 @@ export default function Report() {
       if (filters.writer && item.writerName !== filters.writer) return false;
       if (filters.month && item.month !== filters.month) return false;
 
+      // Handling status filter
       if (filters.status) {
-        if (filters.status === 'assigned' && !item.writerAssignedAt) return false;
-        if (filters.status === 'submitted' && !item.writerSubmittedAt) return false;
-        if (filters.status === 'published' && !item.publishedAt) return false;
+        if (filters.status === 'assigned' && item.writerAssignedAt && !item.writerSubmittedAt) return true;
+        if (filters.status === 'submitted' && item.writerSubmittedAt && !item.publishedAt) return true;
+        if (filters.status === 'published' && item.publishedAt) return true;
+        return false;
       }
+
       return true;
     });
   }, [filters, data]);
