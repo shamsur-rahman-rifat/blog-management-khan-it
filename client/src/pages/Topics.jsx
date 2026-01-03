@@ -23,6 +23,13 @@ export default function ManagerTopics() {
   const isManager = user?.roles?.includes('manager');
   const isWriter = user?.roles?.includes('writer');
 
+  const getCurrentMonth = () => {
+  const date = new Date();
+  const month = date.toLocaleString('default', { month: 'short' });
+  const year = String(date.getFullYear()).slice(2);
+  return `${month}-${year}`;
+};
+
   const getMonths = () => {
     const months = [];
     for (let i = 0; i <= 3; i++) {
@@ -94,7 +101,7 @@ export default function ManagerTopics() {
         title: '',
         keyword: '',
         instructions: '',
-        month: getMonths()[0]
+        month: getCurrentMonth()
       });
     }
     setBlogInputs(newInputs);
@@ -377,23 +384,9 @@ export default function ManagerTopics() {
                           onChange={(e) => handleInputChange(index, 'instructions', e.target.value)}
                         />
                       </div>
-                      <div className="col-12 col-md-6">
-                        <label className="form-label text-muted small mb-1">
-                          <span className="text-danger">*</span> Target Month
-                        </label>
-                        <select
-                          className="form-select"
-                          style={{ borderRadius: '6px' }}
-                          value={blog.month}
-                          onChange={(e) => handleInputChange(index, 'month', e.target.value)}
-                          required
-                        >
-                          <option value="">-- Select month --</option>
-                          {getMonths().map(month => (
-                            <option key={month} value={month}>{month}</option>
-                          ))}
-                        </select>
-                      </div>
+                      <div className="text-muted small">
+                        📅 Target Month: <strong>{blog.month}</strong>
+                      </div>                      
                     </div>
                   </div>
                 ))}
