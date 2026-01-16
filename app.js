@@ -12,6 +12,7 @@ import dotenv from 'dotenv';
 dotenv.config();
 const app=new express();
 const __dirname = resolve();
+app.set('trust proxy', 1);
 
 // Middleware
 
