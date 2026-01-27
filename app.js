@@ -48,11 +48,13 @@ connect(URL)
 
 app.use("/api", router);
 
-app.use(express.static('client/dist'));
 
-// Serve React front end for all routes not handled by the API
-app.get(/(.*)/, (req, res) => {
-    res.sendFile(resolve(__dirname, 'client', 'dist', 'index.html'));
+// Serve static files from public directory
+app.use(express.static(path.join(__dirname, 'public')));
+
+// Serve index.html for all other routes (SPA support)
+app.get(/^\/(?!api).*/, (req, res) => {
+    res.sendFile(path.join(__dirname, 'public', 'index.html'));
 });
 
 export default app;

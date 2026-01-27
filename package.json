@@ -6,7 +6,7 @@
   "type": "module",
   "scripts": {
     "start": "nodemon index.js",
-    "build": "npm install && npm install --prefix client && npm run build --prefix client",
+    "build": "npm install && cd client && npm install && npx vite build && npx -y shx mv dist ../public",
     "dev": "npm run dev --prefix client"
   },
   "keywords": [],
